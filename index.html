@@ -1,0 +1,2368 @@
+<!DOCTYPE html>
+<html lang="sr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Balkan Avto — Planer utovara polovnih vozila</title>
+<link href="https://fonts.googleapis.com/css2?family=Schibsted+Grotesk:wght@400;500;600;700;800&family=Figtree:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<style>
+  :root{
+    --bg:#f3f6f5; --surface:#ffffff; --surface2:#eef2f1; --surface3:#e3e9e8;
+    --border:#e3e8e7; --border-bright:#cad4d2;
+    --accent:#0f766e; --accent-strong:#0c5f59; --accent-dim:#0f766e0f;
+    --blue:#2563eb; --green:#15803d; --red:#dc2626; --yellow:#b45309;
+    --orange:#c2620a; --purple:#7c3aed; --cyan:#0e7490; --navy:#1e3a8a;
+    --text:#18211f; --text-dim:#6b7672; --text-mid:#3c4744;
+    --shadow:0 1px 2px rgba(15,40,35,.04),0 4px 18px rgba(15,40,35,.05);
+    --display:'Schibsted Grotesk',sans-serif; --mono:'Figtree',sans-serif; --sans:'Figtree',sans-serif;
+  }
+  .logo,.auth-title,.sec-title,.modal-t,.uc-name,.kpi-value{font-family:var(--display)}
+  .kpi-value,.tbl td,.tbl th,.kpi-label{font-variant-numeric:tabular-nums}
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{background:radial-gradient(circle at 12% -5%,#eaf0f8 0%,transparent 42%),
+      radial-gradient(circle at 90% 105%,#eef1f7 0%,transparent 40%),var(--bg);
+    color:var(--text);font-family:var(--sans);min-height:100vh}
+  .header{background:rgba(255,255,255,.92);backdrop-filter:blur(12px);
+    border-bottom:1px solid var(--border);padding:13px 26px;display:flex;
+    align-items:center;justify-content:space-between;position:sticky;top:0;z-index:100;
+    box-shadow:0 1px 0 rgba(15,30,55,.04),0 6px 18px rgba(15,30,55,.04)}
+  .header-left{display:flex;align-items:center;gap:18px}
+  .logo{font-family:var(--mono);font-size:19px;font-weight:700;color:var(--accent);
+    letter-spacing:.06em;display:flex;align-items:center;gap:8px}
+  .logo span{color:var(--text-dim);font-weight:400}
+  .logo-mark{width:28px;height:28px;background:var(--accent);border-radius:7px;
+    display:flex;align-items:center;justify-content:center;font-size:14px;box-shadow:0 2px 6px rgba(15,118,110,.3)}
+  .header-sub{font-size:12px;color:var(--text-mid);font-family:var(--mono);
+    text-transform:uppercase;letter-spacing:.12em;padding-left:18px;border-left:1px solid var(--border)}
+  .header-right{display:flex;align-items:center;gap:12px;flex-wrap:wrap}
+  .db-pill{display:flex;align-items:center;gap:8px;background:var(--surface2);
+    border:1px solid var(--border);padding:6px 14px;border-radius:20px;
+    font-family:var(--mono);font-size:11px;color:var(--text-mid);cursor:pointer;transition:all .2s}
+  .db-pill:hover{border-color:var(--accent);color:var(--text)}
+  .db-pill.full{border-color:var(--green);color:var(--green)}
+  .db-pill.error{border-color:var(--red);color:var(--red)}
+  .db-dot{width:7px;height:7px;background:var(--text-dim);border-radius:50%;transition:all .2s}
+  .db-pill.full .db-dot{background:var(--green);box-shadow:0 0 7px var(--green)}
+  .db-pill.error .db-dot{background:var(--red)}
+  .date-display{font-family:var(--mono);font-size:13px;color:var(--text)}
+  .toolbtn{background:none;border:1px solid var(--border-bright);border-radius:16px;color:var(--text-dim);
+    font-family:var(--mono);font-size:11px;padding:5px 11px;cursor:pointer;transition:all .15s}
+  .toolbtn:hover{border-color:var(--accent);color:var(--accent)}
+  .main{max-width:1760px;margin:0 auto;padding:22px 26px 80px}
+  .dash{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:10px;margin-bottom:18px}
+  .kpi{background:var(--surface);border:1px solid var(--border);border-radius:10px;
+    padding:13px 14px;position:relative;overflow:hidden;box-shadow:var(--shadow)}
+  .kpi::before{content:'';position:absolute;top:0;left:0;right:0;height:3px}
+  .kpi.c-orange::before{background:var(--accent)}.kpi.c-blue::before{background:var(--blue)}
+  .kpi.c-green::before{background:var(--green)}.kpi.c-yellow::before{background:var(--yellow)}
+  .kpi.c-red::before{background:var(--red)}.kpi.c-purple::before{background:var(--purple)}
+  .kpi.c-cyan::before{background:var(--cyan)}.kpi.c-navy::before{background:var(--navy)}
+  .kpi-label{font-size:9px;font-family:var(--mono);color:var(--text-dim);
+    text-transform:uppercase;letter-spacing:.09em;margin-bottom:6px}
+  .kpi-value{font-family:var(--mono);font-size:22px;font-weight:700;line-height:1.1}
+  .kpi-value input{background:none;border:none;color:var(--text);font-family:var(--mono);
+    font-size:22px;font-weight:700;width:54px;outline:none;padding:0}
+  .kpi-value input:focus{color:var(--accent)}
+  .kpi-sub{font-size:9px;color:var(--text-dim);margin-top:5px;font-family:var(--mono)}
+  .section{background:var(--surface);border:1px solid var(--border);border-radius:11px;
+    margin-bottom:16px;overflow:hidden;box-shadow:var(--shadow)}
+  .sec-head{display:flex;align-items:center;gap:11px;padding:13px 18px;
+    background:var(--surface2);border-bottom:1px solid var(--border);cursor:pointer;user-select:none}
+  .sec-icon{font-size:16px}
+  .sec-title{font-family:var(--mono);font-size:11.5px;text-transform:uppercase;
+    letter-spacing:.12em;color:var(--text);font-weight:600}
+  .sec-badge{font-family:var(--mono);font-size:10.5px;background:var(--surface3);
+    color:var(--text-mid);padding:3px 9px;border-radius:4px}
+  .sec-toggle{margin-left:auto;color:var(--text-dim);font-size:14px;transition:transform .2s}
+  .section.collapsed .sec-toggle{transform:rotate(-90deg)}
+  .section.collapsed .sec-body{display:none}
+  .sec-body{padding:16px 18px}.sec-body.nopad{padding:0}
+  .frow{display:flex;align-items:center;gap:10px;margin-bottom:10px;flex-wrap:wrap}
+  .fgrid{display:grid;grid-template-columns:repeat(4,1fr);gap:13px}
+  .fgrid.g3{grid-template-columns:repeat(3,1fr)}
+  .fld{display:flex;flex-direction:column;gap:5px}
+  .fld.span2{grid-column:span 2}.fld.span3{grid-column:span 3}.fld.span4{grid-column:span 4}
+  .fld label{font-family:var(--mono);font-size:9.5px;text-transform:uppercase;
+    letter-spacing:.07em;color:var(--text-dim)}
+  .fld label .req{color:var(--red)}
+  .fld input,.fld select,.fld textarea{background:var(--bg);border:1px solid var(--border);
+    border-radius:5px;color:var(--text);font-family:var(--mono);font-size:12.5px;
+    padding:8px 10px;outline:none;transition:border-color .15s;width:100%}
+  .fld input:focus,.fld select:focus,.fld textarea:focus{border-color:var(--accent)}
+  .fld textarea{resize:vertical;min-height:48px;line-height:1.5}
+  .fld select option{background:var(--surface3)}
+  .chkrow{display:flex;flex-wrap:wrap;gap:8px;margin-top:4px}
+  .chk{display:flex;align-items:center;gap:7px;background:var(--bg);
+    border:1px solid var(--border);border-radius:6px;padding:7px 12px;cursor:pointer;
+    font-family:var(--mono);font-size:11px;color:var(--text-mid);transition:all .15s;user-select:none}
+  .chk:hover{border-color:var(--border-bright)}
+  .chk input{width:15px;height:15px;accent-color:var(--accent);cursor:pointer;margin:0}
+  .chk.on{border-color:var(--accent);color:var(--text);background:var(--accent-dim)}
+  .chk.on.danger{border-color:var(--red);background:#ef444415;color:#b91c1c}
+  .chk.on.warn{border-color:var(--yellow);background:#eab30815;color:#92600c}
+  .chk.on.ok{border-color:var(--green);background:#22c55e15;color:#15803d}
+  .btn{border:none;border-radius:6px;font-family:var(--mono);font-size:12px;cursor:pointer;
+    transition:all .15s;text-transform:uppercase;letter-spacing:.07em}
+  .btn-ghost{background:none;border:1px solid var(--border-bright);color:var(--text-mid);padding:10px 18px}
+  .btn-ghost:hover{border-color:var(--blue);color:var(--blue)}
+  .btn-primary{background:var(--accent);color:#fff;padding:11px 26px;font-weight:700;box-shadow:0 2px 8px rgba(15,118,110,.22)}
+  .btn-primary:hover{background:var(--accent-strong);transform:translateY(-1px);box-shadow:0 4px 12px rgba(15,118,110,.3)}
+  .btn-sm{padding:7px 13px;font-size:11px}
+  .btn-danger{background:none;border:1px solid var(--red);color:var(--red);padding:10px 18px}
+  .btn-danger:hover{background:#fee2e2}
+  .form-actions{display:flex;gap:11px;align-items:center;margin-top:16px;
+    padding-top:16px;border-top:1px solid var(--border);flex-wrap:wrap}
+  .form-actions .info{font-family:var(--mono);font-size:11px;color:var(--text-dim);margin-right:auto}
+  .tbl-topscroll{overflow-x:auto;overflow-y:hidden;height:12px;background:var(--surface2);border-bottom:1px solid var(--border)}
+  .tbl-topscroll>div{height:1px}
+  .tbl-topscroll::-webkit-scrollbar{height:9px}
+  .tbl-topscroll::-webkit-scrollbar-thumb{background:var(--border-bright);border-radius:5px}
+  .tbl-wrap{overflow-x:auto}
+  .tbl{width:100%;border-collapse:collapse;min-width:1260px}
+  .tbl th{font-family:var(--mono);font-size:8.5px;text-transform:uppercase;font-weight:600;
+    letter-spacing:.03em;color:var(--text-dim);padding:7px 5px;
+    border-bottom:1px solid var(--border-bright);text-align:left;white-space:nowrap;
+    position:sticky;top:0;background:var(--surface2);cursor:pointer;user-select:none;transition:color .12s;z-index:1}
+  .tbl th[data-sk]:hover{color:var(--accent)}
+  .tbl th.sorted{color:var(--accent)}
+  .tbl th .sk-arr{font-size:8px}
+  .tbl th.num,.tbl td.num{text-align:right}
+  .tbl td{padding:5px 5px;border-bottom:1px solid var(--border);font-family:var(--mono);
+    font-size:10.5px;color:var(--text-mid);white-space:nowrap}
+  .tbl tbody tr:nth-child(even) td{background:rgba(15,118,110,.018)}
+  .tbl tr:hover td{background:var(--surface2)}
+  .tbl .ctrunc{max-width:130px;overflow:hidden;text-overflow:ellipsis;display:inline-block;vertical-align:bottom}
+  .tbl .ctrunc.sm{max-width:90px}
+  .tbl tr.done td{opacity:.55}
+  .tbl tr.prio td{box-shadow:inset 3px 0 0 var(--red)}
+  .tbl tr.late td{background:#fee2e2}
+  .tbl tr.late:hover td{background:#fecaca}
+  .tbl tr.soon td{background:#fef3c7}
+  .tbl tr.soon:hover td{background:#fde68a}
+  .tbl tr.problem td{box-shadow:inset 3px 0 0 var(--yellow)}
+  .tbl .hv{color:var(--text);font-weight:500}
+  /* tura red u "po turama" prikazu */
+  .tbl tr.tour-row td{background:var(--surface2);font-weight:600;cursor:pointer}
+  .tbl tr.tour-row:hover td{background:var(--surface3)}
+  .tbl tr.tour-row td{border-bottom:1px solid var(--border-bright)}
+  .tbl tr.order-sub td{background:#fbfdfc}
+  .tbl tr.order-sub td:first-child{padding-left:22px}
+  .tbl tr.order-sub:hover td{background:var(--surface2)}
+  .exp-caret{display:inline-block;width:13px;color:var(--text-dim);transition:transform .15s}
+  .tbl tr.tour-row.open .exp-caret{transform:rotate(90deg);color:var(--accent)}
+  .pill{display:inline-block;padding:2px 7px;border-radius:4px;font-size:9.5px;font-family:var(--mono);font-weight:600}
+  .pill.g{background:#dcfce7;color:#166534}.pill.r{background:#fee2e2;color:#991b1b}
+  .pill.y{background:#fef3c7;color:#854d0e}.pill.b{background:#dbeafe;color:#1e40af}
+  .pill.gr{background:#e5e7eb;color:#4b5563}.pill.p{background:#ede9fe;color:#5b21b6}
+  .pill.o{background:#ffedd5;color:#9a3412}.pill.nv{background:#dbeafe;color:#1e3a8a}
+  .pill.dk{background:#1e3a8a;color:#fff}
+  /* dokumentacija badge */
+  .docbadges{display:inline-flex;gap:3px}
+  .docb{font-family:var(--mono);font-size:8px;font-weight:700;padding:2px 4px;border-radius:3px;letter-spacing:.02em}
+  .docb.on{background:#dcfce7;color:#166534}
+  .docb.off{background:#fee2e2;color:#991b1b}
+  .docb.part{background:#fef3c7;color:#854d0e}
+  .badge-flags{display:inline-flex;gap:3px}
+  .bflag{font-size:9px;padding:1px 5px;border-radius:3px;font-family:var(--mono);font-weight:600}
+  .bflag.problem{background:#fee2e2;color:#991b1b}
+  .bflag.cekanje{background:#fef3c7;color:#854d0e}
+  .bflag.blokada{background:#1e293b;color:#fff}
+  .bflag.steta{background:#fed7aa;color:#9a3412}
+  .bflag.otkazano{background:#e5e7eb;color:#4b5563;text-decoration:line-through}
+  .row-act{display:flex;gap:5px}
+  .row-act button{background:none;border:1px solid var(--border-bright);border-radius:4px;
+    color:var(--text-dim);font-family:var(--mono);font-size:10px;padding:3px 7px;cursor:pointer;transition:all .15s}
+  .row-act button:hover{border-color:var(--accent);color:var(--accent)}
+  .row-act button.del:hover{border-color:var(--red);color:var(--red)}
+  .filterbar{display:flex;gap:9px;align-items:center;flex-wrap:wrap;padding:12px 18px;
+    background:var(--surface2);border-bottom:1px solid var(--border)}
+  .filterbar input,.filterbar select{background:var(--bg);border:1px solid var(--border);
+    border-radius:5px;color:var(--text);font-family:var(--mono);font-size:11.5px;padding:7px 10px;outline:none}
+  .filterbar input:focus,.filterbar select:focus{border-color:var(--accent)}
+  .filterbar .lbl{font-family:var(--mono);font-size:10px;color:var(--text-dim);text-transform:uppercase;letter-spacing:.06em}
+  .chipfilters{display:flex;gap:7px;flex-wrap:wrap;padding:0 18px 12px;background:var(--surface2)}
+  .fchip{font-family:var(--mono);font-size:10px;border:1px solid var(--border-bright);background:var(--bg);
+    color:var(--text-dim);border-radius:14px;padding:5px 11px;cursor:pointer;transition:all .15s;text-transform:uppercase;letter-spacing:.04em}
+  .fchip:hover{border-color:var(--accent);color:var(--accent)}
+  .fchip.on{background:var(--accent);color:#fff;border-color:var(--accent);font-weight:600}
+  .fchip.on.warn{background:var(--yellow);border-color:var(--yellow)}
+  .fchip.on.red{background:var(--red);border-color:var(--red)}
+  .view-tabs{display:flex;border:1px solid var(--border-bright);border-radius:5px;overflow:hidden}
+  .view-tab{padding:7px 13px;font-family:var(--mono);font-size:11px;background:none;border:none;
+    color:var(--text-dim);cursor:pointer;transition:all .15s;text-transform:uppercase;letter-spacing:.06em}
+  .view-tab.on{background:var(--accent);color:#fff;font-weight:600}
+  .view-tab:not(.on):hover{background:var(--surface3);color:var(--text)}
+  .inline-sel{background:transparent;border:1px solid var(--border);border-radius:4px;
+    color:var(--text);font-family:var(--mono);font-size:10px;padding:2px 4px;outline:none;cursor:pointer;font-weight:600}
+  .inline-sel:focus{border-color:var(--accent)}
+  .inline-sel option{background:var(--surface3)}
+  .inline-sel.st-g{border-color:#16a34a;color:#166534}.inline-sel.st-r{border-color:#dc2626;color:#991b1b}
+  .inline-sel.st-y{border-color:#ca8a04;color:#854d0e}.inline-sel.st-b{border-color:#2563eb;color:#1e40af}
+  .inline-sel.st-p{border-color:#7c3aed;color:#5b21b6}.inline-sel.st-o{border-color:#ea580c;color:#9a3412}
+  .inline-sel.st-nv{border-color:#1e3a8a;color:#1e3a8a;font-weight:700}.inline-sel.st-dk{border-color:#1e3a8a;color:#1e3a8a}
+  .inline-sel.st-gr{border-color:var(--border-bright);color:var(--text-mid)}
+  .inline-inp{background:transparent;border:1px solid var(--border);border-radius:4px;
+    color:var(--text);font-family:var(--mono);font-size:10px;padding:2px 4px;outline:none;width:70px;text-align:right}
+  .inline-inp:focus{border-color:var(--accent)}
+  .inline-fin{display:inline-flex;align-items:center;gap:3px;font-family:var(--mono);font-size:9.5px}
+  .inline-fin input{accent-color:var(--green);width:13px;height:13px;margin:0;cursor:pointer}
+  .selbox{accent-color:var(--accent);width:14px;height:14px;cursor:pointer;margin:0}
+  .bulkbar{display:none;align-items:center;gap:10px;flex-wrap:wrap;padding:11px 18px;background:var(--accent-dim);
+    border-bottom:1px solid var(--border);font-family:var(--mono);font-size:11px;color:var(--text)}
+  .bulkbar.on{display:flex}
+  /* ── NALOG KARTICE (forma) ── */
+  .ord-cards{display:flex;flex-direction:column;gap:12px;margin-top:8px}
+  .ord-card{border:1px solid var(--border-bright);border-radius:9px;background:var(--bg);overflow:hidden}
+  .ord-card.problem{border-color:var(--red)}
+  .ord-chead{display:flex;align-items:center;gap:10px;padding:10px 13px;background:var(--surface2);
+    border-bottom:1px solid var(--border);cursor:pointer;user-select:none}
+  .ord-card.collapsed .ord-chead{border-bottom:none}
+  .ord-num{width:24px;height:24px;border-radius:6px;background:var(--accent);color:#fff;
+    display:flex;align-items:center;justify-content:center;font-family:var(--mono);font-size:12px;font-weight:700;flex-shrink:0}
+  .ord-ctitle{font-family:var(--mono);font-size:12px;color:var(--text);font-weight:600;
+    flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .ord-ctitle .dim{color:var(--text-dim);font-weight:400}
+  .ord-cacts{display:flex;gap:5px;align-items:center}
+  .ord-cacts button{background:none;border:1px solid var(--border-bright);border-radius:4px;color:var(--text-dim);
+    font-family:var(--mono);font-size:11px;padding:3px 8px;cursor:pointer;transition:all .15s}
+  .ord-cacts button:hover{border-color:var(--accent);color:var(--accent)}
+  .ord-cacts button.del:hover{border-color:var(--red);color:var(--red)}
+  .ord-cbody{padding:14px 13px}
+  .ord-card.collapsed .ord-cbody{display:none}
+  .ord-ccaret{color:var(--text-dim);font-size:13px;transition:transform .15s}
+  .ord-card.collapsed .ord-ccaret{transform:rotate(-90deg)}
+  .subgrid{display:grid;grid-template-columns:repeat(4,1fr);gap:11px}
+  .subgrid .fld label{font-size:9px}
+  .subhdr{grid-column:1/-1;font-family:var(--mono);font-size:9.5px;text-transform:uppercase;letter-spacing:.1em;
+    color:var(--accent);font-weight:700;margin-top:6px;padding-top:8px;border-top:1px dashed var(--border-bright)}
+  .subhdr:first-child{margin-top:0;padding-top:0;border-top:none}
+  /* ── VOZILA U NALOGU ── */
+  .veh-wrap{display:flex;flex-direction:column;gap:6px}
+  .veh-row{display:grid;grid-template-columns:24px 1.3fr 1.1fr 1.4fr auto 26px;gap:7px;align-items:center;
+    background:var(--surface2);border:1px solid var(--border);border-radius:7px;padding:6px 8px}
+  .veh-row input{background:var(--bg);border:1px solid var(--border);border-radius:5px;color:var(--text);
+    font-family:var(--mono);font-size:11.5px;padding:6px 8px;outline:none;width:100%}
+  .veh-row input:focus{border-color:var(--accent)}
+  .veh-idx{font-family:var(--mono);font-size:11px;font-weight:700;color:var(--accent);text-align:center}
+  .veh-docs{display:flex;gap:4px;flex-wrap:wrap}
+  .veh-docs .chk{font-size:9px;padding:4px 6px;gap:4px}
+  .veh-docs .chk input{width:12px;height:12px}
+  .veh-del{background:none;border:none;color:var(--text-dim);cursor:pointer;font-size:14px;padding:2px}
+  .veh-del:hover{color:var(--red)}
+  @media (max-width:900px){.veh-row{grid-template-columns:20px 1fr 1fr;gap:5px}.veh-row .veh-opis{grid-column:2/-1}.veh-docs{grid-column:1/-1}.veh-del{grid-column:1/-1;justify-self:end}}
+  /* ── VOZNI PARK ── */
+  .fleet-add input,.fleet-add select{background:var(--bg);border:1px solid var(--border);border-radius:5px;color:var(--text);
+    font-family:var(--mono);font-size:12px;padding:7px 9px;outline:none}
+  .fleet-add input:focus{border-color:var(--accent)}
+  /* ── GANTT ── */
+  .gantt-wrap{padding:0;background:var(--bg);overflow-x:auto;display:none}
+  .gantt-wrap.on{display:block}
+  .tbl-wrap.off{display:none}
+  .gantt-toolbar{display:flex;gap:9px;align-items:center;flex-wrap:wrap;padding:11px 18px;background:var(--surface2);border-bottom:1px solid var(--border)}
+  .gantt{min-width:1100px;font-family:var(--mono);font-size:11px;padding:14px 18px}
+  .gantt-head{display:grid;grid-template-columns:190px repeat(7,1fr);gap:2px;margin-bottom:6px;position:sticky;top:0;background:var(--bg);z-index:1;padding-bottom:6px;border-bottom:1px solid var(--border)}
+  .gantt-day{font-family:var(--mono);font-size:10px;text-align:center;color:var(--text-dim);
+    text-transform:uppercase;letter-spacing:.06em;padding:6px 4px;background:var(--surface2);border-radius:4px}
+  .gantt-day.today{background:var(--accent-dim);color:var(--accent);border:1px solid var(--accent)}
+  .gantt-day .date{display:block;color:var(--text);font-size:12px;font-weight:600;margin-top:2px}
+  .gantt-day.today .date{color:var(--accent)}
+  .gantt-row{display:grid;grid-template-columns:190px repeat(7,1fr);gap:2px;margin-bottom:3px;min-height:30px;align-items:center}
+  .gantt-reg{font-family:var(--mono);font-size:11.5px;color:var(--text);font-weight:600;padding:6px 8px;
+    background:var(--surface2);border-radius:4px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .gantt-reg .driver{display:block;color:var(--text-dim);font-size:9.5px;font-weight:400;margin-top:1px}
+  .gantt-cell{position:relative;min-height:30px;background:var(--surface2);border-radius:4px;border:1px solid var(--border)}
+  .gantt-cell.today{background:#fff7ed;border-color:#fed7aa}
+  .gantt-bar{position:absolute;top:3px;bottom:3px;background:var(--blue);border-radius:3px;
+    padding:3px 6px;color:#fff;font-size:10px;cursor:pointer;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;transition:transform .1s,box-shadow .1s}
+  .gantt-bar:hover{transform:translateY(-1px);box-shadow:0 4px 10px rgba(0,0,0,.3);z-index:10}
+  .gantt-bar.late{background:var(--red)}
+  .gantt-bar.soon{background:var(--yellow);color:#1a1a1a}
+  .gantt-bar.isporuceno{background:var(--green);opacity:.85}
+  .gantt-bar.otkazano{background:var(--text-dim);opacity:.5;text-decoration:line-through}
+  .gantt-bar.utovaren{background:var(--navy)}
+  .gantt-bar.lokal{background:var(--orange)}
+  .gantt-bar.najavljen{background:var(--purple)}
+  .gantt-bar.rasporedjen{background:var(--blue)}
+  .gantt-bar.ugovoren{background:var(--text-dim)}
+  .gantt-bar.prio::before{content:'\2691 ';color:#fde047}
+  .gantt-bar.problem{outline:2px solid var(--yellow);outline-offset:-2px}
+  .gantt-bar[draggable=true]{cursor:grab}
+  .gantt-bar[draggable=true]:active{cursor:grabbing}
+  .gantt-cell.drop-target{outline:2px dashed var(--accent);background:var(--accent-dim)}
+  .gantt-empty{padding:30px;text-align:center;color:var(--text-dim);font-family:var(--mono);font-size:12px}
+  .nera-tag[draggable=true]{cursor:grab}
+  .nera-list{display:flex;flex-wrap:wrap;gap:8px;margin-top:8px}
+  .nera-tag{display:flex;align-items:center;gap:7px;background:var(--bg);
+    border:1px solid var(--orange);border-radius:6px;padding:6px 11px;font-family:var(--mono);font-size:11.5px;color:#9a3412}
+  .nera-tag button{background:none;border:none;color:var(--text-dim);cursor:pointer;font-size:13px}
+  .nera-tag button:hover{color:var(--red)}
+  .overlay{display:none;position:fixed;inset:0;background:rgba(30,35,45,.55);z-index:200;
+    align-items:center;justify-content:center;padding:20px;backdrop-filter:blur(3px)}
+  .overlay.open{display:flex}
+  .modal{background:var(--surface);border:1px solid var(--border-bright);border-radius:11px;
+    width:100%;max-width:640px;max-height:85vh;overflow:hidden;display:flex;flex-direction:column}
+  .modal.wide{max-width:1080px}.modal.xwide{max-width:1300px}
+  .modal-h{display:flex;align-items:center;justify-content:space-between;padding:16px 22px;border-bottom:1px solid var(--border)}
+  .modal-t{font-family:var(--mono);font-size:13px;text-transform:uppercase;letter-spacing:.1em;color:var(--accent)}
+  .modal-x{background:none;border:none;color:var(--text-dim);font-size:19px;cursor:pointer}
+  .modal-b{overflow-y:auto;padding:18px 22px}
+  .empty{text-align:center;color:var(--text-dim);padding:30px;font-family:var(--mono);font-size:12px}
+  @media (max-width:1300px){.dash{grid-template-columns:repeat(4,1fr)}.fgrid,.fgrid.g3,.subgrid{grid-template-columns:repeat(2,1fr)}.fld.span2,.fld.span3,.fld.span4{grid-column:span 2}}
+  @media (max-width:768px){.dash{grid-template-columns:repeat(2,1fr)}.fgrid,.fgrid.g3,.subgrid{grid-template-columns:1fr}
+    .fld.span2,.fld.span3,.fld.span4{grid-column:span 1}.main{padding:14px}.header-sub{display:none}}
+  ::-webkit-scrollbar{width:8px;height:8px}
+  ::-webkit-scrollbar-track{background:var(--bg)}
+  ::-webkit-scrollbar-thumb{background:var(--border-bright);border-radius:4px}
+  /* ── PRIJAVA ── */
+  .auth-screen{position:fixed;inset:0;z-index:500;display:flex;align-items:center;justify-content:center;padding:24px;
+    background:radial-gradient(circle at 18% 12%,#e7eef9 0%,transparent 45%),
+      radial-gradient(circle at 85% 90%,#eaf0f8 0%,transparent 45%),var(--bg)}
+  .auth-card{width:100%;max-width:400px;background:var(--surface);border:1px solid var(--border);
+    border-radius:16px;box-shadow:0 12px 40px rgba(15,30,55,.12);overflow:hidden}
+  .auth-top{padding:30px 32px 22px;text-align:center;border-bottom:1px solid var(--border);background:linear-gradient(180deg,#fbfcfe,#f4f7fb)}
+  .auth-logo{width:54px;height:54px;background:var(--accent);border-radius:14px;display:flex;
+    align-items:center;justify-content:center;font-size:26px;margin:0 auto 14px;box-shadow:0 6px 18px rgba(15,118,110,.32)}
+  .auth-title{font-family:var(--mono);font-size:18px;font-weight:700;color:var(--accent);letter-spacing:.05em}
+  .auth-title span{color:var(--text-dim);font-weight:400}
+  .auth-sub{font-family:var(--mono);font-size:10px;text-transform:uppercase;letter-spacing:.13em;color:var(--text-dim);margin-top:7px}
+  .auth-body{padding:26px 32px 30px;display:flex;flex-direction:column;gap:15px}
+  .auth-fld{display:flex;flex-direction:column;gap:6px}
+  .auth-fld label{font-family:var(--mono);font-size:10px;text-transform:uppercase;letter-spacing:.08em;color:var(--text-dim)}
+  .auth-fld input{background:var(--bg);border:1px solid var(--border);border-radius:8px;color:var(--text);
+    font-family:var(--mono);font-size:14px;padding:11px 13px;outline:none;transition:border-color .15s}
+  .auth-fld input:focus{border-color:var(--accent)}
+  .auth-btn{background:var(--accent);color:#fff;border:none;border-radius:8px;font-family:var(--mono);
+    font-size:13px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;padding:13px;cursor:pointer;
+    transition:all .15s;box-shadow:0 2px 8px rgba(15,118,110,.24);margin-top:4px}
+  .auth-btn:hover{background:var(--accent-strong);transform:translateY(-1px)}
+  .auth-err{font-family:var(--mono);font-size:11.5px;color:var(--red);text-align:center;min-height:16px}
+  .auth-foot{font-family:var(--mono);font-size:10px;color:var(--text-dim);text-align:center;padding:0 32px 24px;line-height:1.7}
+  body.locked{overflow:hidden}
+  .user-chip{display:flex;align-items:center;gap:9px;background:var(--surface2);border:1px solid var(--border);padding:5px 7px 5px 12px;border-radius:22px}
+  .user-chip .uc-av{width:26px;height:26px;border-radius:50%;background:var(--accent);color:#fff;
+    display:flex;align-items:center;justify-content:center;font-family:var(--mono);font-size:11px;font-weight:700}
+  .user-chip .uc-meta{display:flex;flex-direction:column;line-height:1.15}
+  .user-chip .uc-name{font-family:var(--sans);font-size:12px;font-weight:600;color:var(--text)}
+  .user-chip .uc-role{font-family:var(--mono);font-size:9px;text-transform:uppercase;letter-spacing:.08em;color:var(--text-dim)}
+  .uc-btn{background:none;border:1px solid var(--border-bright);border-radius:16px;color:var(--text-dim);
+    font-family:var(--mono);font-size:11px;padding:5px 11px;cursor:pointer;transition:all .15s}
+  .uc-btn:hover{border-color:var(--accent);color:var(--accent)}
+  .uc-btn.logout:hover{border-color:var(--red);color:var(--red)}
+  body.no-finance .cap-finance{display:none!important}
+  body.no-edit .cap-edit{display:none!important}
+  body.no-db .cap-db{display:none!important}
+  body.no-users .cap-users{display:none!important}
+  body.no-export .cap-export{display:none!important}
+  .usr-row{display:grid;grid-template-columns:1fr auto auto;align-items:center;gap:10px;
+    background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:11px 14px;margin-bottom:9px}
+  .usr-row .u-name{font-family:var(--mono);font-size:13px;color:var(--text);font-weight:600}
+  .usr-row .u-sub{font-family:var(--mono);font-size:10.5px;color:var(--text-dim);margin-top:2px}
+  .role-tag{font-family:var(--mono);font-size:9.5px;text-transform:uppercase;letter-spacing:.07em;padding:3px 9px;border-radius:5px;font-weight:600}
+  .role-tag.admin{background:#e7eef9;color:var(--accent-strong)}
+  .role-tag.dispecer{background:#e0f2f1;color:#0f766e}
+  .role-tag.pregled{background:#f1f5f9;color:#475569}
+  .usr-del{background:none;border:1px solid var(--border-bright);border-radius:6px;color:var(--text-dim);
+    font-family:var(--mono);font-size:11px;padding:6px 12px;cursor:pointer}
+  .usr-del:hover{border-color:var(--red);color:var(--red)}
+  /* ── IZVEŠTAJI ── */
+  .rep-tabs{display:flex;gap:7px;flex-wrap:wrap;margin-bottom:14px}
+  .rep-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px;margin-bottom:16px}
+  .rep-kpi{background:var(--bg);border:1px solid var(--border);border-radius:9px;padding:13px 14px;position:relative;overflow:hidden}
+  .rep-kpi .l{font-family:var(--mono);font-size:9px;text-transform:uppercase;letter-spacing:.08em;color:var(--text-dim);margin-bottom:6px}
+  .rep-kpi .v{font-family:var(--mono);font-size:20px;font-weight:700;color:var(--text)}
+  .rep-panels{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+  .rep-panel{background:var(--bg);border:1px solid var(--border);border-radius:10px;padding:14px}
+  .rep-panel.full{grid-column:1/-1}
+  .rep-panel h4{font-family:var(--mono);font-size:11px;text-transform:uppercase;letter-spacing:.08em;color:var(--text-mid);margin-bottom:10px;font-weight:600}
+  .rep-panel canvas{max-height:240px}
+  @media(max-width:760px){.rep-panels{grid-template-columns:1fr}}
+  .log-row{display:grid;grid-template-columns:120px 90px 1fr;gap:10px;padding:8px 10px;border-bottom:1px solid var(--border);
+    font-family:var(--mono);font-size:11px;align-items:center}
+  .log-row .lt{color:var(--text-dim);font-size:10px}
+  .log-row .la{font-weight:600}
+  .log-row .la.create{color:var(--green)}.log-row .la.update{color:var(--blue)}
+  .log-row .la.delete{color:var(--red)}.log-row .la.status{color:var(--purple)}
+  .log-row .ld{color:var(--text-mid);overflow:hidden;text-overflow:ellipsis}
+  .dict-cols{display:grid;grid-template-columns:repeat(3,1fr);gap:14px}
+  @media(max-width:760px){.dict-cols{grid-template-columns:1fr}}
+  .dict-box{background:var(--bg);border:1px solid var(--border);border-radius:9px;padding:12px}
+  .dict-box h4{font-family:var(--mono);font-size:10.5px;text-transform:uppercase;letter-spacing:.07em;color:var(--accent);margin-bottom:9px;font-weight:700}
+  .dict-list{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:9px;max-height:150px;overflow-y:auto}
+  .dict-item{display:flex;align-items:center;gap:6px;background:var(--surface2);border:1px solid var(--border);
+    border-radius:5px;padding:4px 9px;font-family:var(--mono);font-size:11px;color:var(--text-mid)}
+  .dict-item button{background:none;border:none;color:var(--text-dim);cursor:pointer;font-size:12px}
+  .dict-item button:hover{color:var(--red)}
+  .dict-add{display:flex;gap:6px}
+  .dict-add input{flex:1;background:var(--surface);border:1px solid var(--border);border-radius:5px;
+    color:var(--text);font-family:var(--mono);font-size:11px;padding:6px 9px;outline:none}
+  .toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%);background:var(--text);color:#fff;
+    font-family:var(--mono);font-size:12px;padding:11px 20px;border-radius:8px;box-shadow:0 6px 24px rgba(0,0,0,.25);
+    z-index:600;opacity:0;transition:opacity .25s,transform .25s;pointer-events:none}
+  .toast.show{opacity:1;transform:translateX(-50%) translateY(-4px)}
+  .toast.err{background:var(--red)}.toast.ok{background:var(--green)}
+  datalist{font-family:var(--mono)}
+</style>
+</head>
+<body class="locked">
+
+<!-- PRIJAVA -->
+<div class="auth-screen" id="authScreen">
+  <div class="auth-card">
+    <div class="auth-top">
+      <div class="auth-logo">🚛</div>
+      <div class="auth-title">BALKAN<span>AVTO</span></div>
+      <div class="auth-sub">Planer utovara · prijava</div>
+    </div>
+    <div class="auth-body">
+      <div class="auth-fld"><label>Korisničko ime</label>
+        <input id="authUser" autocomplete="username" placeholder="npr. dispecer" onkeydown="if(event.key==='Enter')doLogin()"></div>
+      <div class="auth-fld"><label>Lozinka</label>
+        <input id="authPass" type="password" autocomplete="current-password" placeholder="••••••••" onkeydown="if(event.key==='Enter')doLogin()"></div>
+      <div class="auth-err" id="authErr"></div>
+      <button class="auth-btn" onclick="doLogin()">Prijavi se</button>
+    </div>
+    <div class="auth-foot">Planer utovara polovnih vozila · pristup samo ovlašćenim radnicima.</div>
+  </div>
+</div>
+
+<div class="header">
+  <div class="header-left">
+    <div class="logo"><span class="logo-mark">🚛</span>BALKAN<span>AVTO</span></div>
+    <div class="header-sub">Planer utovara polovnih vozila</div>
+  </div>
+  <div class="header-right">
+    <button class="toolbtn cap-export" onclick="openReports()" title="Izveštaji i analitika">📊 Izveštaji</button>
+    <button class="toolbtn" onclick="openLogs()" title="Istorija izmena">🕓 Istorija</button>
+    <button class="toolbtn cap-edit" onclick="openFleet('kamioni')" title="Vozni park — kamioni i vozači">🚛 Vozni park</button>
+    <button class="toolbtn cap-edit" onclick="openDicts()" title="Šifarnici">📚 Šifarnici</button>
+    <div class="db-pill" id="dbPill" onclick="openSetup()" title="Podešavanje baze">
+      <div class="db-dot"></div><span id="dbStatus">Baza: lokalno</span>
+    </div>
+    <div class="date-display" id="dateDisplay">—</div>
+    <button class="uc-btn cap-users" onclick="openUsers()" title="Korisnici">👥</button>
+    <div class="user-chip" id="userChip" style="display:none">
+      <div class="uc-av" id="ucAvatar">–</div>
+      <div class="uc-meta"><span class="uc-name" id="ucName">—</span><span class="uc-role" id="ucRole">—</span></div>
+      <button class="uc-btn logout" onclick="logout()">Odjava</button>
+    </div>
+  </div>
+</div>
+
+<div class="main">
+  <!-- DASHBOARD -->
+  <div class="dash" id="dash">
+    <div class="kpi c-orange" style="cursor:pointer" onclick="openFleet('kamioni')" title="Otvori vozni park"><div class="kpi-label">Ukupno kamiona</div>
+      <div class="kpi-value"><input type="number" id="k-trucks" value="60" min="0" oninput="recalc()" onchange="persistMeta()" onclick="event.stopPropagation()"></div>
+      <div class="kpi-sub" id="k-trucks-sub">vozni park ⚙</div></div>
+    <div class="kpi c-blue" style="cursor:pointer" onclick="openFleet('vozaci')" title="Otvori vozni park"><div class="kpi-label">Ukupno vozača</div>
+      <div class="kpi-value"><input type="number" id="k-drivers" value="58" min="0" oninput="recalc()" onchange="persistMeta()" onclick="event.stopPropagation()"></div>
+      <div class="kpi-sub" id="k-drv-sub">na raspolaganju</div></div>
+    <div class="kpi c-yellow"><div class="kpi-label">Vozači na odmoru</div>
+      <div class="kpi-value"><input type="number" id="k-drv-rest" value="0" min="0" oninput="recalc()" onchange="persistMeta()"></div>
+      <div class="kpi-sub">odbija se od ukupnog</div></div>
+    <div class="kpi c-red"><div class="kpi-label">Servis / van pogona</div>
+      <div class="kpi-value" id="k-break">0</div><div class="kpi-sub">kamiona</div></div>
+    <div class="kpi c-yellow"><div class="kpi-label">Nerasporedjeni</div>
+      <div class="kpi-value" id="k-nera">0</div><div class="kpi-sub">slobodni kamioni</div></div>
+    <div class="kpi c-navy"><div class="kpi-label">Ture / aktivne</div>
+      <div class="kpi-value" style="font-size:18px"><span id="k-tours" style="color:var(--text)">0</span> <span style="color:var(--text-dim);font-size:13px">/</span> <span id="k-tours-act" style="color:var(--blue)">0</span></div>
+      <div class="kpi-sub" id="k-tours-sub">u periodu</div></div>
+    <div class="kpi c-cyan"><div class="kpi-label">Nalozi / vozila</div>
+      <div class="kpi-value" style="font-size:18px"><span id="k-orders">0</span> <span style="color:var(--text-dim);font-size:13px">/</span> <span id="k-vehicles" style="color:var(--cyan)">0</span></div>
+      <div class="kpi-sub">pojedinačnih</div></div>
+    <div class="kpi c-green cap-finance"><div class="kpi-label">Vrednost (period)</div>
+      <div class="kpi-value" id="k-value" style="font-size:17px">0 €</div><div class="kpi-sub" id="k-pct">naplata 0%</div></div>
+    <div class="kpi c-orange cap-finance"><div class="kpi-label">Nenaplaćeno gotov.</div>
+      <div class="kpi-value" id="k-cashdue" style="font-size:17px">0 €</div><div class="kpi-sub">+ <span id="k-invdue">0 €</span> fakture</div></div>
+    <div class="kpi c-red"><div class="kpi-label">Problemi / dok.</div>
+      <div class="kpi-value" style="font-size:18px"><span id="k-prob" style="color:var(--red)">0</span> <span style="color:var(--text-dim);font-size:13px">/</span> <span id="k-docmiss" style="color:var(--yellow)">0</span></div>
+      <div class="kpi-sub">problem / nepotpuna dok.</div></div>
+  </div>
+
+  <!-- NERASPOREDJENI -->
+  <div class="section" id="sec-nera">
+    <div class="sec-head" onclick="toggleSec('sec-nera')"><span class="sec-icon">🅿️</span>
+      <span class="sec-title">Nerasporedjeni kamioni</span><span class="sec-badge" id="b-nera">0</span><span class="sec-toggle">▾</span></div>
+    <div class="sec-body">
+      <div class="frow cap-edit"><span style="font-family:var(--mono);font-size:11px;color:var(--text-mid)">Reg. oznaka koja nije raspoređena:</span>
+        <input id="neraInput" list="dl-trucks" placeholder="BG-123-AB" style="background:var(--bg);border:1px solid var(--border);border-radius:5px;color:var(--text);font-family:var(--mono);font-size:12px;padding:8px 11px;outline:none;width:160px" onkeydown="if(event.key==='Enter')addNera()">
+        <button class="btn btn-ghost btn-sm" onclick="addNera()">＋ Dodaj</button></div>
+      <div class="nera-list" id="neraList"></div></div>
+  </div>
+  <!-- SERVIS -->
+  <div class="section" id="sec-servis">
+    <div class="sec-head" onclick="toggleSec('sec-servis')"><span class="sec-icon">🔧</span>
+      <span class="sec-title">Servis / van pogona</span><span class="sec-badge" id="b-servis">0</span><span class="sec-toggle">▾</span></div>
+    <div class="sec-body">
+      <div class="frow cap-edit"><span style="font-family:var(--mono);font-size:11px;color:var(--text-mid)">Reg. oznaka na servisu:</span>
+        <input id="servisInput" list="dl-trucks" placeholder="BG-456-CD" style="background:var(--bg);border:1px solid var(--border);border-radius:5px;color:var(--text);font-family:var(--mono);font-size:12px;padding:8px 11px;outline:none;width:160px" onkeydown="if(event.key==='Enter')addServis()">
+        <button class="btn btn-ghost btn-sm" onclick="addServis()">＋ Dodaj</button></div>
+      <div class="nera-list" id="servisList"></div></div>
+  </div>
+  <!-- UNOS TURE -->
+  <div class="section cap-edit" id="sec-form">
+    <div class="sec-head" onclick="toggleSec('sec-form')"><span class="sec-icon">📝</span>
+      <span class="sec-title" id="formTitle">Unos nove ture</span>
+      <span class="sec-badge" id="editBadge" style="display:none;background:var(--accent);color:#fff">IZMENA</span>
+      <span class="sec-toggle">▾</span></div>
+    <div class="sec-body">
+      <div class="fgrid">
+        <div class="fld"><label>Broj ture</label><input id="t-broj" placeholder="T-2026-001"></div>
+        <div class="fld"><label>Reg. oznaka kamiona</label><input id="t-reg" list="dl-trucks" placeholder="BG-123-AB"></div>
+        <div class="fld"><label>Vozač</label><input id="t-vozac" list="dl-drivers" placeholder="Petrović Marko"></div>
+        <div class="fld"><label>Status ture</label><select id="t-status"></select></div>
+        <div class="fld"><label>Datum polaska</label><input id="t-polazak" type="date"></div>
+        <div class="fld"><label>Očekivani završetak</label><input id="t-zavrsetak" type="date"></div>
+        <div class="fld"><label>GPS pozicija</label><input id="t-gps" placeholder="npr. A1 kod Graca"></div>
+        <div class="fld"><label>Prioritet ture</label><select id="t-prio"><option value="0">Normalno</option><option value="1">Visok</option><option value="2">Hitno</option></select></div>
+        <div class="fld"><label>Interna oznaka</label><input id="t-interna" placeholder="npr. grupa A"></div>
+        <div class="fld span2"><label>Napomena (cela tura)</label><input id="t-napomena" placeholder="napomena za turu"></div>
+      </div>
+
+      <div style="display:flex;align-items:center;justify-content:space-between;margin:18px 0 4px;flex-wrap:wrap;gap:10px">
+        <div style="font-family:var(--mono);font-size:11px;text-transform:uppercase;letter-spacing:.1em;color:var(--accent);font-weight:700">Nalozi u okviru ture <span id="ordCount" style="color:var(--text-dim)">(0)</span></div>
+        <div style="font-family:var(--mono);font-size:10.5px;color:var(--text-dim)" id="ordSummary"></div>
+      </div>
+      <div class="ord-cards" id="ordCards"></div>
+
+      <div class="form-actions">
+        <span class="info" id="formInfo">Popuni turu i bar jedan nalog, pa sačuvaj.</span>
+        <button class="btn btn-ghost" onclick="addOrderCard()">＋ Dodaj nalog</button>
+        <button class="btn btn-ghost" onclick="clearForm(true)">Očisti formu</button>
+        <button class="btn btn-ghost" id="dupBtn" onclick="duplicateCurrentForm()" style="display:none">⧉ Dupliraj turu</button>
+        <button class="btn btn-ghost" id="saveAddBtn" onclick="saveTura(true)">Sačuvaj i nova</button>
+        <button class="btn btn-primary" id="saveBtn" onclick="saveTura(false)">✓ Sačuvaj turu</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- TABELA -->
+  <div class="section" id="sec-table">
+    <div class="sec-head" onclick="toggleSec('sec-table')"><span class="sec-icon">📋</span>
+      <span class="sec-title">Pregled tura i naloga</span><span class="sec-badge" id="b-table">0</span><span class="sec-toggle">▾</span></div>
+    <div class="sec-body nopad">
+      <div class="filterbar">
+        <div class="view-tabs">
+          <button class="view-tab on" id="vt-tours" onclick="setView('tours')">Po turama</button>
+          <button class="view-tab" id="vt-orders" onclick="setView('orders')">Po nalozima</button>
+          <button class="view-tab" id="vt-gantt" onclick="setView('gantt')">Gantt</button>
+        </div>
+        <input id="f-search" placeholder="🔍 pretraga…" style="min-width:180px" oninput="renderAll()">
+        <select id="f-status" onchange="renderAll()"><option value="">Svi statusi naloga</option></select>
+        <select id="f-client" onchange="renderAll()"><option value="">Svi klijenti</option></select>
+        <select id="f-driver" onchange="renderAll()"><option value="">Svi vozači</option></select>
+        <select id="f-truck" onchange="renderAll()"><option value="">Svi kamioni</option></select>
+        <span class="lbl">period</span>
+        <select id="f-period" onchange="renderAll()">
+          <option value="all">Sve</option><option value="today">Danas</option><option value="cur">Tekuća sed.</option>
+          <option value="prev">Prošla sed.</option><option value="next">Naredna sed.</option>
+          <option value="month">Tekući mesec</option></select>
+        <button class="btn btn-ghost btn-sm cap-export" onclick="exportXLSX()">⬇ Excel</button>
+        <button class="btn btn-ghost btn-sm cap-export" onclick="exportCSV()">⬇ CSV</button>
+        <button class="btn btn-ghost btn-sm cap-edit" onclick="openImport()">⬆ Import</button>
+      </div>
+      <div class="chipfilters" id="chipFilters">
+        <div class="fchip" data-f="docmiss" onclick="toggleChip('docmiss')">Nepotpuna dok.</div>
+        <div class="fchip" data-f="cashdue" onclick="toggleChip('cashdue')">Nenaplaćena gotov.</div>
+        <div class="fchip" data-f="invdue" onclick="toggleChip('invdue')">Neplaćena faktura</div>
+        <div class="fchip" data-f="problem" onclick="toggleChip('problem')">Problemi</div>
+        <div class="fchip" data-f="delnopay" onclick="toggleChip('delnopay')">Isporučeno a nenaplaćeno</div>
+        <div class="fchip" data-f="late" onclick="toggleChip('late')">Kasni utovar</div>
+        <div class="fchip" data-f="today" onclick="toggleChip('today')">Danas/sutra</div>
+      </div>
+      <div class="bulkbar" id="bulkBar">
+        <span id="bulkCount">0 izabrano</span>
+        <select id="bulk-status" class="inline-sel cap-edit" style="font-size:11px;padding:5px 7px"></select>
+        <button class="btn btn-ghost btn-sm cap-edit" onclick="bulkSetStatus()">Postavi status</button>
+        <button class="btn btn-ghost btn-sm cap-edit" onclick="bulkSetDoc()">✔ Sva dokumentacija</button>
+        <button class="btn btn-ghost btn-sm cap-finance" onclick="bulkMarkPaid()">€ Označi naplaćeno</button>
+        <button class="btn btn-ghost btn-sm" onclick="clearSelection()">Poništi izbor</button>
+      </div>
+      <div class="gantt-toolbar" id="ganttToolbar" style="display:none">
+        <div class="view-tabs">
+          <button class="view-tab on" id="gm-truck" onclick="setGanttMode('truck')">Po kamionima</button>
+          <button class="view-tab" id="gm-order" onclick="setGanttMode('order')">Po nalozima</button>
+        </div>
+        <button class="btn btn-ghost btn-sm" onclick="ganttWeek(-1)">◂ Prethodna</button>
+        <span id="ganttWeekLbl" style="font-family:var(--mono);font-size:11px;color:var(--text-mid)"></span>
+        <button class="btn btn-ghost btn-sm" onclick="ganttWeek(1)">Naredna ▸</button>
+        <button class="btn btn-ghost btn-sm" onclick="ganttWeek(0)">Tekuća</button>
+        <span id="ganttLegend" style="display:flex;gap:9px;flex-wrap:wrap;margin-left:auto"></span>
+      </div>
+      <div class="tbl-topscroll" id="topScroll"><div id="topScrollInner"></div></div>
+      <div class="tbl-wrap" id="tblWrap"><table class="tbl"><thead id="tblHead"></thead><tbody id="tblBody"></tbody></table></div>
+      <div class="gantt-wrap" id="ganttWrap"><div class="gantt" id="ganttInner"></div></div>
+    </div>
+  </div>
+</div>
+<!-- DATALISTS (autocomplete) -->
+<datalist id="dl-clients"></datalist>
+<datalist id="dl-drivers"></datalist>
+<datalist id="dl-trucks"></datalist>
+<datalist id="dl-trailers"></datalist>
+<datalist id="dl-loadplaces"></datalist>
+<datalist id="dl-unloadplaces"></datalist>
+<datalist id="dl-vehtypes"></datalist>
+
+<!-- SETUP -->
+<div class="overlay" id="setupModal"><div class="modal">
+  <div class="modal-h"><span class="modal-t">⚙️ Podešavanje baze</span><button class="modal-x" onclick="closeSetup()">✕</button></div>
+  <div class="modal-b">
+    <p style="font-family:var(--mono);font-size:11.5px;color:var(--text-mid);line-height:1.6;margin-bottom:14px">
+      Baza je Google Sheets preko Apps Script Web App-a. Lokalni IndexedDB keš ubrzava prikaz i radi offline. Auto-sinhronizacija na ~10s.</p>
+    <div class="fld" style="margin-bottom:12px"><label>Apps Script Web App URL</label>
+      <input id="apiUrlInput" placeholder="https://script.google.com/macros/s/…/exec"></div>
+    <div class="frow">
+      <button class="btn btn-primary btn-sm" onclick="saveApiUrl()">Sačuvaj URL</button>
+      <button class="btn btn-ghost btn-sm" onclick="testConnection()">Test konekcije</button>
+      <button class="btn btn-ghost btn-sm" onclick="forceFullSync()">Puna sinhronizacija</button>
+      <button class="btn btn-ghost btn-sm" onclick="clearLocalCache()">Obriši lokalni keš</button>
+    </div>
+    <div id="setupStatus" style="font-family:var(--mono);font-size:11px;color:var(--text-dim);margin-top:12px"></div>
+  </div>
+</div></div>
+
+<!-- USERS -->
+<div class="overlay" id="usersModal"><div class="modal">
+  <div class="modal-h"><span class="modal-t">👥 Korisnici</span><button class="modal-x" onclick="closeUsers()">✕</button></div>
+  <div class="modal-b">
+    <div id="usersList" style="margin-bottom:18px"></div>
+    <div style="border-top:1px solid var(--border);padding-top:16px">
+      <div style="font-family:var(--mono);font-size:11px;text-transform:uppercase;letter-spacing:.08em;color:var(--accent);margin-bottom:11px;font-weight:700">Dodaj korisnika</div>
+      <div class="fgrid g3">
+        <div class="fld"><label>Puno ime</label><input id="nu-name" placeholder="Ime Prezime"></div>
+        <div class="fld"><label>Korisničko ime</label><input id="nu-user" placeholder="ime"></div>
+        <div class="fld"><label>Lozinka</label><input id="nu-pass" type="password" placeholder="min. 4 znaka"></div>
+        <div class="fld"><label>Uloga</label><select id="nu-role"><option value="dispecer">Dispečer</option><option value="pregled">Pregled</option><option value="admin">Administrator</option></select></div>
+      </div>
+      <div class="auth-err" id="usersErr" style="text-align:left;margin-top:8px"></div>
+      <button class="btn btn-primary btn-sm" style="margin-top:10px" onclick="addUser()">＋ Dodaj korisnika</button>
+    </div>
+  </div>
+</div></div>
+
+<!-- REPORTS -->
+<div class="overlay" id="reportsModal"><div class="modal xwide">
+  <div class="modal-h"><span class="modal-t">📊 Izveštaji i analitika</span>
+    <div style="display:flex;gap:8px;align-items:center">
+      <button class="btn btn-ghost btn-sm cap-export" onclick="exportReportPDF()">📄 PDF izveštaj</button>
+      <button class="modal-x" onclick="closeReports()">✕</button></div></div>
+  <div class="modal-b">
+    <div class="rep-tabs">
+      <select id="rep-period" class="inline-sel" style="font-size:12px;padding:7px 9px" onchange="buildReports()">
+        <option value="today">Danas</option><option value="cur" selected>Tekuća sedmica</option>
+        <option value="prev">Prošla sedmica</option><option value="next">Naredna sedmica</option>
+        <option value="month">Tekući mesec</option><option value="pmonth">Prošli mesec</option>
+        <option value="all">Sve u bazi</option></select>
+    </div>
+    <div id="reportsBody"></div>
+  </div>
+</div></div>
+
+<!-- LOGS -->
+<div class="overlay" id="logsModal"><div class="modal wide">
+  <div class="modal-h"><span class="modal-t">🕓 Istorija izmena</span><button class="modal-x" onclick="closeLogs()">✕</button></div>
+  <div class="modal-b">
+    <div class="frow"><input id="logSearch" placeholder="🔍 filter loga…" style="background:var(--bg);border:1px solid var(--border);border-radius:5px;color:var(--text);font-family:var(--mono);font-size:12px;padding:7px 10px;outline:none;flex:1" oninput="renderLogs()"></div>
+    <div id="logsList" style="border:1px solid var(--border);border-radius:8px;overflow:hidden;max-height:60vh;overflow-y:auto"></div>
+  </div>
+</div></div>
+
+<!-- VOZNI PARK -->
+<div class="overlay" id="fleetModal"><div class="modal xwide" style="height:88vh;max-height:88vh">
+  <div class="modal-h"><span class="modal-t">🚛 Vozni park</span>
+    <div style="display:flex;gap:8px;align-items:center">
+      <button class="btn btn-ghost btn-sm cap-edit" onclick="seedFleet()" title="Učitaj početnu bazu (PODACI)">⭳ Učitaj početnu bazu</button>
+      <button class="modal-x" onclick="closeFleet()">✕</button></div></div>
+  <div class="modal-b" style="display:flex;flex-direction:column;gap:10px">
+    <div class="rep-tabs">
+      <button class="view-tab on" id="ft-kamioni" onclick="setFleetTab('kamioni')">🚛 Kamioni</button>
+      <button class="view-tab" id="ft-vozaci" onclick="setFleetTab('vozaci')">👤 Vozači</button>
+      <span id="fleetSummary" style="margin-left:auto;font-family:var(--mono);font-size:11px;color:var(--text-mid)"></span>
+    </div>
+    <div class="frow cap-edit" id="fleetAddRow" style="gap:7px;flex-wrap:wrap"></div>
+    <div class="frow"><input id="fleetSearch" placeholder="🔍 filter…" oninput="renderFleet()" style="background:var(--bg);border:1px solid var(--border);border-radius:5px;color:var(--text);font-family:var(--mono);font-size:12px;padding:7px 10px;outline:none;flex:1">
+      <select id="fleetStatusFilter" class="inline-sel" style="font-size:12px;padding:7px 9px" onchange="renderFleet()"><option value="">Svi statusi</option></select></div>
+    <div class="tbl-wrap" style="flex:1;overflow:auto;border:1px solid var(--border);border-radius:8px"><table class="tbl"><thead id="fleetHead"></thead><tbody id="fleetBody"></tbody></table></div>
+  </div>
+</div></div>
+
+<!-- DICTS -->
+<div class="overlay" id="dictsModal"><div class="modal xwide">
+  <div class="modal-h"><span class="modal-t">📚 Šifarnici</span><button class="modal-x" onclick="closeDicts()">✕</button></div>
+  <div class="modal-b"><div class="dict-cols" id="dictsBody"></div></div>
+</div></div>
+
+<!-- IMPORT -->
+<div class="overlay" id="importModal"><div class="modal">
+  <div class="modal-h"><span class="modal-t">⬆ Import naloga (CSV/Excel)</span><button class="modal-x" onclick="closeImport()">✕</button></div>
+  <div class="modal-b">
+    <p style="font-family:var(--mono);font-size:11px;color:var(--text-mid);line-height:1.6;margin-bottom:12px">
+      Učitaj CSV ili Excel sa kolonama naloga (zaglavlje kao u izvozu „Po nalozima“). Postojeći nalozi se ažuriraju po <b>order_id</b>, novi se dodaju. Tura se kreira/dopunjuje po <b>broj_ture</b>.</p>
+    <input type="file" id="importFile" accept=".csv,.xlsx,.xls" style="font-family:var(--mono);font-size:12px;margin-bottom:12px">
+    <div id="importStatus" style="font-family:var(--mono);font-size:11px;color:var(--text-dim);margin-bottom:12px"></div>
+    <button class="btn btn-primary btn-sm" onclick="runImport()">Pokreni import</button>
+  </div>
+</div></div>
+
+<!-- COPY ORDER TO TOUR -->
+<div class="overlay" id="moveModal"><div class="modal">
+  <div class="modal-h"><span class="modal-t" id="moveTitle">Premesti / kopiraj nalog</span><button class="modal-x" onclick="closeMove()">✕</button></div>
+  <div class="modal-b">
+    <div class="fld" style="margin-bottom:12px"><label>Ciljna tura</label><select id="moveTarget"></select></div>
+    <div id="moveStatus" style="font-family:var(--mono);font-size:11px;color:var(--text-dim);margin-bottom:12px"></div>
+    <div class="frow">
+      <button class="btn btn-primary btn-sm" onclick="confirmMove(false)">Premesti</button>
+      <button class="btn btn-ghost btn-sm" onclick="confirmMove(true)">Kopiraj</button>
+    </div>
+  </div>
+</div></div>
+
+<!-- PDF PREVIEW -->
+<div class="overlay" id="pdfModal"><div class="modal xwide" style="height:90vh;max-height:90vh">
+  <div class="modal-h"><span class="modal-t" id="pdfModalTitle">📄 Pregled PDF</span>
+    <div style="display:flex;gap:8px;align-items:center">
+      <button class="btn btn-primary btn-sm" id="pdfDownloadBtn">⬇ Preuzmi</button>
+      <button class="modal-x" onclick="closePdfPreview()">✕</button></div></div>
+  <div class="modal-b" style="padding:0;flex:1"><iframe id="pdfFrame" style="width:100%;height:100%;border:none;background:#525659" src="about:blank"></iframe></div>
+</div></div>
+
+<div class="toast" id="toast"></div>
+<script>
+/* ═══════════════════════════════════════════════════════════════
+   BALKAN AVTO — PLANER UTOVARA POLOVNIH VOZILA
+   Jedan fajl · vanilla JS · Google Sheets backend · IndexedDB keš
+   ═══════════════════════════════════════════════════════════════ */
+
+/* ── Konfiguracija baze ── */
+const API_KEY='ba_planer_api_url';
+let API_URL = localStorage.getItem(API_KEY) || 'PASTE_APPS_SCRIPT_WEB_APP_URL';
+let apiOnline=null, lastSyncTs=0, pendingWrites=0;
+
+/* ── Uloge / ovlašćenja ── */
+const ROLE_CAPS={
+  admin:    {edit:1,finance:1,db:1,users:1,export:1,label:'Administrator'},
+  dispecer: {edit:1,finance:1,db:0,users:0,export:1,label:'Dispečer'},
+  pregled:  {edit:0,finance:0,db:0,users:0,export:0,label:'Pregled'}
+};
+/* Podrazumevane lozinke: admin2026 / dispecer2026 / pregled2026 — PROMENI IH. */
+const DEFAULT_USERS=[
+  {user:'admin',    name:'Administrator', role:'admin',    hash:'6051fc84a7a0d74c225fb18a496b09952da5642e60723ecae543298edd7d82d6'},
+  {user:'dispecer', name:'Dispečer',      role:'dispecer', hash:'f94287ae5106a0403c3f3bc06b2377fb87c5315434bec1d100f95281e557b724'},
+  {user:'pregled',  name:'Pregled',       role:'pregled',  hash:'22839e03aed03584fecb54df9509b99757f9e06ef13545ed258061c069ddd038'}
+];
+const USERS_KEY='bap_users_v1', SESSION_KEY='bap_session_v1';
+let CURRENT_USER=null, CAPS={edit:0,finance:0,db:0,users:0,export:0}, SYNCED_USERS=null;
+
+/* ── Statusi ── */
+const TOUR_STATUS={
+  u_pripremi:{label:'U pripremi',cls:'gr'}, aktivna:{label:'Aktivna',cls:'b'},
+  delim_utovarena:{label:'Delim. utovarena',cls:'nv'}, komplet_utovarena:{label:'Komplet utovarena',cls:'dk'},
+  delim_isporucena:{label:'Delim. isporučena',cls:'o'}, zavrsena:{label:'Završena',cls:'g'},
+  otkazana:{label:'Otkazana',cls:'gr'}, problem:{label:'Problem',cls:'r'}
+};
+const ORDER_STATUS={
+  ugovoren:{label:'Ugovoren',cls:'gr'}, rasporedjen:{label:'Raspoređen',cls:'b'},
+  najavljen:{label:'Najavljen',cls:'p'}, utovaren:{label:'Utovaren',cls:'dk'},
+  lokal:{label:'Lokal',cls:'o'}, isporuceno:{label:'Isporučeno',cls:'g'}
+};
+const ORDER_FLAGS=[['problem','Problem','problem'],['cekanje','Čekanje','cekanje'],
+  ['blokada','Blokada','blokada'],['steta','Šteta','steta'],['otkazano','Otkazano','otkazano']];
+/* ── Vozni park (kamioni / vozači) ── */
+const KAMION_STATUS={
+  aktivan:{label:'Aktivan',cls:'g'}, servis:{label:'Servis / van pogona',cls:'r'},
+  nova_vozila:{label:'NOVA VOZILA',cls:'nv'}, neaktivan:{label:'Neaktivan',cls:'gr'}
+};
+const VOZAC_STATUS={
+  aktivan:{label:'Aktivan',cls:'g'}, odmor:{label:'Odmor / odsustvo',cls:'y'},
+  nova_vozila:{label:'NOVA VOZILA',cls:'nv'}, neaktivan:{label:'Neaktivan',cls:'gr'}
+};
+/* "NOVA VOZILA" = resurs posvećen transportu novih vozila (druga evidencija) → nije za planer polovnih. */
+const DOC_DEFS=[['nu','NU','Nalog za utovar'],['fa','FA','Faktura'],['saob','SAOB','Saobraćajna'],['ex','EX','EX / izvozna']];
+
+/* ── Stanje ── */
+let DB=null;
+let TOURS=[], ORDERS=[], LOGS=[];
+let DICTS={clients:[],drivers:[],trucks:[],trailers:[],loadplaces:[],unloadplaces:[],vehtypes:[],templates:[]};
+let KAMIONI=[], VOZACI=[];
+let FLEET_TAB='kamioni';
+let META={trucks:60,drivers:58,drvRest:0,nera:[],servis:[]};
+let nera=[], servis=[];
+let VIEW='tours', GANTT_MODE='truck', ganttOffset=0;
+let SORT={key:'broj_ture',dir:1};
+let CHIPS={};
+let SELECTED=new Set();
+let editTourId=null;        // uid ture koja se menja
+let formOrders=[];          // radni nalozi u formi (objekti)
+let _ocSeq=0;               // lokalni seq za kartice
+let moveCtx=null;
+
+/* ── Pomoćne ── */
+function $(id){return document.getElementById(id)}
+function esc(s){return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;')}
+function pad(n){return String(n).padStart(2,'0')}
+function num(v){const n=parseFloat(String(v==null?'':v).replace(',','.'));return isNaN(n)?0:n}
+function money(v){return num(v).toLocaleString('de-DE',{minimumFractionDigits:2,maximumFractionDigits:2})+' €'}
+function money0(v){return Math.round(num(v)).toLocaleString('de-DE')+' €'}
+function dmy(s){if(!s)return'';const m=String(s).match(/^(\d{4})-(\d{2})-(\d{2})/);return m?`${m[3]}.${m[2]}.${m[1]}`:s}
+function ymdLocal(d){return d.getFullYear()+'-'+pad(d.getMonth()+1)+'-'+pad(d.getDate())}
+function todayYmd(){return ymdLocal(new Date())}
+function uid(p){return (p||'X')+Date.now().toString(36)+Math.random().toString(36).slice(2,6)}
+async function sha256(t){const b=await crypto.subtle.digest('SHA-256',new TextEncoder().encode(t));
+  return Array.from(new Uint8Array(b)).map(x=>x.toString(16).padStart(2,'0')).join('')}
+let _toastT=null;
+function toast(msg,kind){const el=$('toast');el.textContent=msg;el.className='toast show'+(kind?' '+kind:'');
+  clearTimeout(_toastT);_toastT=setTimeout(()=>el.className='toast',2600)}
+function fmtClock(d){const dn=['Ned','Pon','Uto','Sre','Čet','Pet','Sub'];
+  return dn[d.getDay()]+' '+pad(d.getDate())+'.'+pad(d.getMonth()+1)+'.'+d.getFullYear()+' '+pad(d.getHours())+':'+pad(d.getMinutes())}
+function tick(){$('dateDisplay').textContent=fmtClock(new Date())}
+function toggleSec(id){$(id).classList.toggle('collapsed')}
+
+/* ── Prijava / sesija ── */
+function getUsers(){
+  if(Array.isArray(SYNCED_USERS)&&SYNCED_USERS.length)return SYNCED_USERS;
+  try{const a=JSON.parse(localStorage.getItem(USERS_KEY));if(Array.isArray(a)&&a.length)return a}catch(e){}
+  localStorage.setItem(USERS_KEY,JSON.stringify(DEFAULT_USERS));return DEFAULT_USERS.slice();
+}
+function saveUsers(l){localStorage.setItem(USERS_KEY,JSON.stringify(l))}
+async function doLogin(){
+  const u=$('authUser').value.trim().toLowerCase(),p=$('authPass').value,err=$('authErr');err.textContent='';
+  if(!u||!p){err.textContent='Unesi korisničko ime i lozinku.';return}
+  const rec=getUsers().find(x=>x.user.toLowerCase()===u),h=await sha256(p);
+  if(!rec||rec.hash!==h){err.textContent='Pogrešno korisničko ime ili lozinka.';$('authPass').value='';return}
+  startSession({user:rec.user,name:rec.name,role:rec.role});
+}
+function startSession(s){
+  CURRENT_USER=s;CAPS=Object.assign({edit:0,finance:0,db:0,users:0,export:0},ROLE_CAPS[s.role]||{});
+  sessionStorage.setItem(SESSION_KEY,JSON.stringify(s));
+  $('authScreen').style.display='none';document.body.classList.remove('locked');applyRole();
+}
+function logout(){sessionStorage.removeItem(SESSION_KEY);location.reload()}
+function applyRole(){
+  const b=document.body;
+  b.classList.toggle('no-finance',!CAPS.finance);b.classList.toggle('no-edit',!CAPS.edit);
+  b.classList.toggle('no-db',!CAPS.db);b.classList.toggle('no-users',!CAPS.users);b.classList.toggle('no-export',!CAPS.export);
+  const chip=$('userChip');
+  if(CURRENT_USER){chip.style.display='flex';
+    $('ucName').textContent=CURRENT_USER.name;
+    $('ucRole').textContent=(ROLE_CAPS[CURRENT_USER.role]||{}).label||CURRENT_USER.role;
+    const ini=(CURRENT_USER.name||CURRENT_USER.user||'?').trim().split(/\s+/).map(w=>w[0]).slice(0,2).join('').toUpperCase();
+    $('ucAvatar').textContent=ini||'?';}
+  ['k-trucks','k-drivers','k-drv-rest'].forEach(id=>{const e=$(id);if(e)e.disabled=!CAPS.edit});
+  renderAll();renderNera();renderServis();
+}
+function requireCap(c,m){if(CAPS[c])return true;toast(m||'Nemate ovlašćenje za ovu akciju.','err');return false}
+function restoreSession(){
+  try{const s=JSON.parse(sessionStorage.getItem(SESSION_KEY));if(!s)return false;
+    const rec=getUsers().find(x=>x.user===s.user);if(!rec)return false;
+    CURRENT_USER={user:rec.user,name:rec.name,role:rec.role};
+    CAPS=Object.assign({edit:0,finance:0,db:0,users:0,export:0},ROLE_CAPS[rec.role]||{});
+    $('authScreen').style.display='none';document.body.classList.remove('locked');return true;
+  }catch(e){return false}
+}
+
+/* ── Upravljanje korisnicima ── */
+function openUsers(){if(!requireCap('users'))return;renderUsers();$('usersModal').classList.add('open')}
+function closeUsers(){$('usersModal').classList.remove('open')}
+function renderUsers(){
+  $('usersList').innerHTML=getUsers().map(u=>{
+    const cap=ROLE_CAPS[u.role]||{},self=CURRENT_USER&&u.user===CURRENT_USER.user;
+    return `<div class="usr-row"><div><div class="u-name">${esc(u.name)} <span style="color:var(--text-dim);font-weight:400">@${esc(u.user)}</span></div>
+      <div class="u-sub">${cap.label||u.role}</div></div>
+      <span class="role-tag ${u.role}">${cap.label||u.role}</span>
+      ${self?'<span style="font-family:var(--mono);font-size:10px;color:var(--text-dim)">trenutni</span>':`<button class="usr-del" onclick="removeUser('${esc(u.user)}')">Ukloni</button>`}</div>`;
+  }).join('');
+}
+async function addUser(){
+  if(!requireCap('users'))return;
+  const name=$('nu-name').value.trim(),user=$('nu-user').value.trim().toLowerCase(),pass=$('nu-pass').value,role=$('nu-role').value,err=$('usersErr');err.textContent='';
+  if(!name||!user||!pass){err.textContent='Popuni ime, korisničko ime i lozinku.';return}
+  if(pass.length<4){err.textContent='Lozinka mora imati najmanje 4 znaka.';return}
+  if(!/^[a-z0-9_.-]+$/.test(user)){err.textContent='Korisničko ime: mala slova, brojevi, . _ -';return}
+  const list=getUsers().slice();
+  if(list.some(x=>x.user.toLowerCase()===user)){err.textContent='To korisničko ime već postoji.';return}
+  list.push({user,name,role,hash:await sha256(pass)});
+  SYNCED_USERS=list;saveUsers(list);await pushUsers();
+  $('nu-name').value='';$('nu-user').value='';$('nu-pass').value='';renderUsers();toast('Korisnik dodat.','ok');
+}
+function removeUser(user){
+  if(!requireCap('users'))return;
+  if(CURRENT_USER&&user===CURRENT_USER.user){toast('Ne možete ukloniti svoj nalog.','err');return}
+  const list=getUsers(),admins=list.filter(x=>x.role==='admin'),tgt=list.find(x=>x.user===user);
+  if(tgt&&tgt.role==='admin'&&admins.length<=1){toast('Mora postojati bar jedan administrator.','err');return}
+  if(!confirm('Ukloniti nalog "'+user+'"?'))return;
+  const next=list.filter(x=>x.user!==user);SYNCED_USERS=next;saveUsers(next);pushUsers();renderUsers();
+}
+/* ═══════════════════ API (Google Apps Script) ═══════════════════ */
+async function apiGet(action,params){
+  const url=new URL(API_URL);url.searchParams.set('action',action);
+  if(params)for(const k in params)url.searchParams.set(k,params[k]);
+  const res=await fetch(url.toString(),{method:'GET',redirect:'follow'});
+  if(!res.ok)throw new Error('HTTP '+res.status);
+  const d=await res.json();if(d&&d.ok===false)throw new Error(d.error||'API greška');return d;
+}
+async function apiPost(action,payload){
+  const body=JSON.stringify(Object.assign({action},payload||{}));
+  const res=await fetch(API_URL,{method:'POST',headers:{'Content-Type':'text/plain;charset=utf-8'},body,redirect:'follow'});
+  if(!res.ok)throw new Error('HTTP '+res.status);
+  const d=await res.json();if(d&&d.ok===false)throw new Error(d.error||'API greška');return d;
+}
+function apiConfigured(){return API_URL&&API_URL.indexOf('script.google.com')>=0}
+function setApiStatus(online,msg){
+  apiOnline=online;updateDbPill(msg);
+}
+function updateDbPill(msg){
+  const pill=$('dbPill'),st=$('dbStatus');pill.classList.remove('full','error');
+  if(!apiConfigured()){st.textContent='Baza: lokalno (podesi URL)';return}
+  if(apiOnline===true){pill.classList.add('full');st.textContent=msg||('Sheets ✓'+(pendingWrites>0?' · upis…':''));}
+  else if(apiOnline===false){pill.classList.add('error');st.textContent=msg||'Sheets ⚠ offline';}
+  else st.textContent=msg||'Povezivanje…';
+}
+
+/* ═══════════════════ IndexedDB keš ═══════════════════ */
+function openDB(){return new Promise((res,rej)=>{
+  const r=indexedDB.open('BalkanAvtoPlanerDB',1);
+  r.onupgradeneeded=e=>{const db=e.target.result;
+    if(!db.objectStoreNames.contains('tours'))db.createObjectStore('tours',{keyPath:'tour_id'});
+    if(!db.objectStoreNames.contains('orders'))db.createObjectStore('orders',{keyPath:'order_id'});
+    if(!db.objectStoreNames.contains('kv'))db.createObjectStore('kv',{keyPath:'k'});};
+  r.onsuccess=e=>{DB=e.target.result;res(DB)};r.onerror=e=>rej(e);});}
+function idbAll(store){return new Promise(res=>{if(!DB){res([]);return}
+  const tx=DB.transaction(store,'readonly').objectStore(store).getAll();tx.onsuccess=()=>res(tx.result||[]);tx.onerror=()=>res([])})}
+function idbPut(store,rec){return new Promise(res=>{if(!DB){res(false);return}
+  const tx=DB.transaction(store,'readwrite').objectStore(store).put(rec);tx.onsuccess=()=>res(true);tx.onerror=()=>res(false)})}
+function idbDel(store,key){return new Promise(res=>{if(!DB){res(false);return}
+  const tx=DB.transaction(store,'readwrite').objectStore(store).delete(key);tx.onsuccess=()=>res(true);tx.onerror=()=>res(false)})}
+function idbClear(store){return new Promise(res=>{if(!DB){res(false);return}
+  const tx=DB.transaction(store,'readwrite').objectStore(store).clear();tx.onsuccess=()=>res(true);tx.onerror=()=>res(false)})}
+function kvGet(k){return new Promise(res=>{if(!DB){res(null);return}
+  const tx=DB.transaction('kv','readonly').objectStore('kv').get(k);tx.onsuccess=()=>res(tx.result?tx.result.v:null);tx.onerror=()=>res(null)})}
+function kvPut(k,v){return idbPut('kv',{k,v})}
+
+/* ── Učitaj keš u stanje ── */
+async function loadCache(){
+  TOURS=await idbAll('tours');
+  ORDERS=await idbAll('orders');ORDERS.forEach(o=>o.vozila=normVozila(o.vozila));
+  const m=await kvGet('meta'); if(m)META=Object.assign(META,m);
+  const u=await kvGet('users'); if(Array.isArray(u)&&u.length){SYNCED_USERS=u;saveUsers(u)}
+  const lg=await kvGet('logs'); if(Array.isArray(lg))LOGS=lg;
+  const dc=await kvGet('dicts'); if(dc)DICTS=Object.assign(DICTS,dc);
+  const km=await kvGet('kamioni'); if(Array.isArray(km))KAMIONI=km;
+  const vz=await kvGet('vozaci'); if(Array.isArray(vz))VOZACI=vz;
+  applyMetaToUI();
+}
+function applyMetaToUI(){
+  nera=META.nera||[];servis=META.servis||[];
+  $('k-trucks').value=META.trucks!=null?META.trucks:60;
+  $('k-drivers').value=META.drivers!=null?META.drivers:58;
+  $('k-drv-rest').value=META.drvRest||0;
+}
+
+/* ── Sinhronizacija sa Sheets ── */
+async function pullAll(silent){
+  if(!apiConfigured())return;
+  try{
+    const d=await apiGet('all');
+    setApiStatus(true);
+    // merge ture/nalozi po ts (noviji pobeđuje); lokalne novije ostaju
+    if(Array.isArray(d.tours))mergeStore('tours','tour_id',TOURS,d.tours);
+    if(Array.isArray(d.orders))mergeStore('orders','order_id',ORDERS,d.orders);
+    if(d.meta&&typeof d.meta==='object'){
+      // ne gazi polja koja korisnik upravo edituje
+      META=Object.assign({},META,d.meta);await kvPut('meta',META);applyMetaToUI();
+    }
+    if(Array.isArray(d.users)&&d.users.length){SYNCED_USERS=d.users;saveUsers(d.users);await kvPut('users',d.users)}
+    if(Array.isArray(d.logs)){LOGS=d.logs;await kvPut('logs',LOGS)}
+    if(d.dictionaries&&typeof d.dictionaries==='object'){DICTS=Object.assign(DICTS,d.dictionaries);await kvPut('dicts',DICTS)}
+    if(Array.isArray(d.kamioni)){KAMIONI=d.kamioni;await kvPut('kamioni',KAMIONI)}
+    if(Array.isArray(d.vozaci)){VOZACI=d.vozaci;await kvPut('vozaci',VOZACI)}
+    refreshDicts();renderAll();renderNera();renderServis();recalc();
+    if(!silent)toast('Sinhronizovano.','ok');
+  }catch(e){setApiStatus(false,'Sheets ⚠ '+(e.message||'offline'));if(!silent)toast('Greška sinhronizacije: '+e.message,'err')}
+}
+function mergeStore(store,key,localArr,incoming){
+  const map={};localArr.forEach(r=>map[r[key]]=r);
+  incoming.forEach(r=>{const ex=map[r[key]];
+    if(!ex||(+r.ts||0)>=(+ex.ts||0)){map[r[key]]=r;idbPut(store,r)}});
+  const merged=Object.values(map);
+  if(store==='tours')TOURS=merged;else{merged.forEach(o=>o.vozila=normVozila(o.vozila));ORDERS=merged;}
+}
+async function pushTour(rec){
+  rec.ts=Date.now();pendingWrites++;updateDbPill();
+  const i=TOURS.findIndex(t=>t.tour_id===rec.tour_id);if(i>=0)TOURS[i]=rec;else TOURS.push(rec);
+  await idbPut('tours',rec);
+  if(apiConfigured()){try{await apiPost('upsertTour',{record:rec});setApiStatus(true)}catch(e){setApiStatus(false,'Sheets ⚠ '+(e.message||''))}}
+  pendingWrites=Math.max(0,pendingWrites-1);updateDbPill();
+}
+async function pushOrder(rec){
+  rec.ts=Date.now();pendingWrites++;updateDbPill();
+  const i=ORDERS.findIndex(o=>o.order_id===rec.order_id);if(i>=0)ORDERS[i]=rec;else ORDERS.push(rec);
+  await idbPut('orders',rec);
+  if(apiConfigured()){try{await apiPost('upsertOrder',{record:rec});setApiStatus(true)}catch(e){setApiStatus(false,'Sheets ⚠ '+(e.message||''))}}
+  pendingWrites=Math.max(0,pendingWrites-1);updateDbPill();
+}
+async function removeTourRemote(tour_id){
+  await idbDel('tours',tour_id);
+  if(apiConfigured()){try{await apiPost('deleteTour',{tour_id});setApiStatus(true)}catch(e){setApiStatus(false)}}
+}
+async function removeOrderRemote(order_id){
+  await idbDel('orders',order_id);
+  if(apiConfigured()){try{await apiPost('deleteOrder',{order_id});setApiStatus(true)}catch(e){setApiStatus(false)}}
+}
+async function pushUsers(){if(apiConfigured()){try{await apiPost('users_set',{users:getUsers()});setApiStatus(true)}catch(e){setApiStatus(false)}}await kvPut('users',getUsers())}
+async function pushDicts(){if(apiConfigured()){try{await apiPost('dictionaries_set',{dictionaries:DICTS});setApiStatus(true)}catch(e){setApiStatus(false)}}await kvPut('dicts',DICTS)}
+async function persistMeta(){
+  if(!CAPS.edit)return;
+  META.trucks=parseInt($('k-trucks').value)||0;
+  META.drivers=parseInt($('k-drivers').value)||0;
+  META.drvRest=parseInt($('k-drv-rest').value)||0;
+  META.nera=nera;META.servis=servis;
+  await kvPut('meta',META);
+  if(apiConfigured()){try{await apiPost('meta_set',{meta:META});setApiStatus(true)}catch(e){setApiStatus(false)}}
+  recalc();
+}
+
+/* ── Log ── */
+async function addLog(action,tour_id,order_id,desc,oldv,newv){
+  const rec={ts:Date.now(),time:fmtClock(new Date()),user:(CURRENT_USER&&CURRENT_USER.name)||'?',
+    action,tour_id:tour_id||'',order_id:order_id||'',desc:desc||'',oldv:oldv||'',newv:newv||''};
+  LOGS.unshift(rec);if(LOGS.length>1000)LOGS=LOGS.slice(0,1000);
+  await kvPut('logs',LOGS);
+  if(apiConfigured()){try{await apiPost('logs_add',{log:rec})}catch(e){}}
+}
+
+/* ── Setup modal ── */
+function openSetup(){if(!CAPS.db){toast('Samo administrator menja podešavanja baze.','err');return}
+  $('apiUrlInput').value=apiConfigured()?API_URL:'';$('setupModal').classList.add('open');updateSetupStatus()}
+function closeSetup(){$('setupModal').classList.remove('open')}
+function updateSetupStatus(){
+  $('setupStatus').innerHTML=apiConfigured()
+    ?(apiOnline===true?'✓ Povezano sa Sheets.':apiOnline===false?'⚠ URL podešen, ali konekcija ne radi.':'URL podešen.')
+    :'Baza nije podešena — radi se lokalno (IndexedDB).';
+}
+function saveApiUrl(){
+  const v=$('apiUrlInput').value.trim();if(!v){toast('Unesi URL.','err');return}
+  API_URL=v;localStorage.setItem(API_KEY,v);toast('URL sačuvan.','ok');testConnection();
+}
+async function testConnection(){
+  $('setupStatus').textContent='Testiram…';
+  try{await apiGet('ping');setApiStatus(true);$('setupStatus').textContent='✓ Konekcija radi.';await pullAll(false)}
+  catch(e){setApiStatus(false);$('setupStatus').textContent='⚠ Greška: '+e.message}
+}
+async function forceFullSync(){$('setupStatus').textContent='Sinhronizujem…';lastSyncTs=0;await pullAll(false);updateSetupStatus()}
+async function clearLocalCache(){
+  if(!confirm('Obrisaće se SAMO lokalni keš (IndexedDB). Podaci u Sheets-u ostaju.\nNastavi?'))return;
+  await idbClear('tours');await idbClear('orders');TOURS=[];ORDERS=[];
+  renderAll();recalc();await pullAll(false);toast('Lokalni keš obrisan.','ok');
+}
+function startAutoSync(){setInterval(()=>{if(apiConfigured()&&pendingWrites===0)pullAll(true)},10000)}
+/* ═══════════════════ IZRAČUNAVANJA ═══════════════════ */
+function ordersOfTour(tid){return ORDERS.filter(o=>o.tour_id===tid)
+  .sort((a,b)=>(parseInt(a.redni_broj)||0)-(parseInt(b.redni_broj)||0))}
+function orderTotal(o){return num(o.iznos_gotovina)+num(o.iznos_faktura)}
+function orderPayStatus(o){
+  const g=num(o.iznos_gotovina),f=num(o.iznos_faktura),tot=g+f;
+  if(tot<=0)return{key:'none',label:'—',cls:'gr'};
+  const paid=(o.gotovina_naplacena?g:0)+(o.faktura_placena?f:0);
+  if(paid<=0)return{key:'none',label:'Nije',cls:'r'};
+  if(paid>=tot)return{key:'full',label:'Naplaćeno',cls:'g'};
+  return{key:'part',label:'Delim.',cls:'y'};
+}
+function docStatus(o){
+  const vs=o.vozila||[];if(!vs.length)return{key:'none',cls:'r',have:0,total:0};
+  let have=0;const total=vs.length*4;
+  vs.forEach(v=>{have+=(v.nu?1:0)+(v.fa?1:0)+(v.saob?1:0)+(v.ex?1:0)});
+  if(have>=total)return{key:'full',cls:'g',have,total};
+  if(have===0)return{key:'none',cls:'r',have,total};
+  return{key:'part',cls:'y',have,total};
+}
+/* da li SVA vozila imaju određeni dokument (nu/fa/saob/ex) */
+function docAll(o,field){const vs=o.vozila||[];return vs.length>0&&vs.every(v=>v[field])}
+function docSome(o,field){const vs=o.vozila||[];return vs.some(v=>v[field])}
+function orderHasProblem(o){return!!(o.problem||o.steta||o.blokada)}
+function orderLate(o){
+  if(['utovaren','lokal','isporuceno'].includes(o.status_naloga)||o.otkazano)return false;
+  return o.datum_utovara&&o.datum_utovara<todayYmd();
+}
+function tourTotals(t){
+  const ords=ordersOfTour(t.tour_id);
+  let cashTotal=0,cashPaid=0,invTotal=0,invPaid=0,vehicles=0,problems=0,docmiss=0;
+  ords.forEach(o=>{
+    const g=num(o.iznos_gotovina),f=num(o.iznos_faktura);
+    cashTotal+=g;invTotal+=f;if(o.gotovina_naplacena)cashPaid+=g;if(o.faktura_placena)invPaid+=f;
+    vehicles+=vehCount(o);
+    if(orderHasProblem(o))problems++;
+    if(docStatus(o).key!=='full')docmiss++;
+  });
+  const grand=cashTotal+invTotal,paid=cashPaid+invPaid;
+  return{orders:ords.length,vehicles,cashTotal,cashPaid,cashDue:cashTotal-cashPaid,
+    invTotal,invPaid,invDue:invTotal-invPaid,grand,paid,
+    pct:grand>0?Math.round(paid/grand*100):0,problems,docmiss,
+    docKey:docmiss===0&&ords.length?'full':(docmiss===ords.length?'none':'part')};
+}
+function suggestTourStatus(t){
+  const ords=ordersOfTour(t.tour_id);if(!ords.length)return'u_pripremi';
+  if(ords.some(o=>orderHasProblem(o)))return'problem';
+  const live=ords.filter(o=>!o.otkazano);if(!live.length)return'otkazana';
+  const st=live.map(o=>o.status_naloga||'ugovoren');
+  const allIs=st.every(s=>s==='isporuceno');
+  const allUt=st.every(s=>['utovaren','lokal','isporuceno'].includes(s));
+  const anyUt=st.some(s=>['utovaren','lokal','isporuceno'].includes(s));
+  const anyIs=st.some(s=>s==='isporuceno');
+  if(allIs)return'zavrsena';
+  if(anyIs)return'delim_isporucena';
+  if(allUt)return'komplet_utovarena';
+  if(anyUt)return'delim_utovarena';
+  return'aktivna';
+}
+function tourEffStatus(t){return t.status_ture||suggestTourStatus(t)}
+function tourLoadDate(t){const d=ordersOfTour(t.tour_id).map(o=>o.datum_utovara).filter(Boolean).sort();return d[0]||t.datum_polaska||''}
+function tourUnloadDate(t){const d=ordersOfTour(t.tour_id).map(o=>o.datum_istovara).filter(Boolean).sort();return d[d.length-1]||t.datum_zavrsetka||''}
+
+/* ── Period ── */
+function weekRange(off){const n=new Date();const day=(n.getDay()+6)%7;
+  const mon=new Date(n);mon.setDate(n.getDate()-day+off*7);mon.setHours(0,0,0,0);
+  const sun=new Date(mon);sun.setDate(mon.getDate()+6);sun.setHours(23,59,59,999);
+  return[ymdLocal(mon),ymdLocal(sun)]}
+function monthRange(off){const n=new Date();const f=new Date(n.getFullYear(),n.getMonth()+off,1);
+  const l=new Date(n.getFullYear(),n.getMonth()+off+1,0);return[ymdLocal(f),ymdLocal(l)]}
+function periodRange(p){
+  if(p==='today'){const t=todayYmd();return[t,t]}
+  if(p==='cur')return weekRange(0);if(p==='prev')return weekRange(-1);if(p==='next')return weekRange(1);
+  if(p==='month')return monthRange(0);if(p==='pmonth')return monthRange(-1);
+  return null;
+}
+function orderInPeriod(o,p){
+  const r=periodRange(p);if(!r)return true;
+  const d=o.datum_utovara||o.datum_istovara||'';if(!d)return p==='all';
+  return d>=r[0]&&d<=r[1];
+}
+function tourInPeriod(t,p){const r=periodRange(p);if(!r)return true;
+  return ordersOfTour(t.tour_id).some(o=>orderInPeriod(o,p))}
+
+/* ═══════════════════ ŠIFARNICI / AUTOCOMPLETE ═══════════════════ */
+const DICT_DEFS=[
+  ['clients','Klijenti','dl-clients'],['drivers','Vozači','dl-drivers'],
+  ['trucks','Kamioni','dl-trucks'],['trailers','Prikolice','dl-trailers'],
+  ['loadplaces','Mesta utovara','dl-loadplaces'],['unloadplaces','Mesta istovara','dl-unloadplaces'],
+  ['vehtypes','Tipovi vozila','dl-vehtypes'],['templates','Napomene / šabloni',null]
+];
+function autoCollect(){
+  // dopuni šifarnike vrednostima iz postojećih podataka (ne briše ručne)
+  const add=(arr,v)=>{v=(v||'').trim();if(v&&!arr.includes(v))arr.push(v)};
+  TOURS.forEach(t=>{add(DICTS.trucks,t.reg);add(DICTS.drivers,t.vozac)});
+  ORDERS.forEach(o=>{add(DICTS.clients,o.klijent);add(DICTS.loadplaces,o.mesto_utovara);
+    add(DICTS.unloadplaces,o.mesto_istovara);(o.vozila||[]).forEach(v=>add(DICTS.vehtypes,v.marka_model))});
+  // vozni park je primarni izvor za kamione i vozače
+  KAMIONI.forEach(k=>add(DICTS.trucks,k.reg));
+  VOZACI.forEach(v=>add(DICTS.drivers,v.ime));
+}
+/* aktivni resursi (za padajuće u formi ture) — bez NOVA VOZILA / neaktivnih */
+function activeTrucks(){
+  if(KAMIONI.length)return KAMIONI.filter(k=>k.status==='aktivan'||k.status==='servis').map(k=>k.reg).filter(Boolean).sort();
+  return uniqueVals(TOURS,'reg');
+}
+function activeDrivers(){
+  if(VOZACI.length)return VOZACI.filter(v=>v.status==='aktivan'||v.status==='odmor').map(v=>v.ime).filter(Boolean).sort();
+  return uniqueVals(TOURS,'vozac');
+}
+function refreshDicts(){
+  autoCollect();
+  DICT_DEFS.forEach(([k,,dl])=>{if(!dl)return;const el=$(dl);if(el)el.innerHTML=(DICTS[k]||[]).map(v=>`<option value="${esc(v)}">`).join('')});
+  // kamioni/vozači za formu ture iz aktivnog voznog parka
+  const dlt=$('dl-trucks');if(dlt)dlt.innerHTML=activeTrucks().map(v=>`<option value="${esc(v)}">`).join('');
+  const dld=$('dl-drivers');if(dld)dld.innerHTML=activeDrivers().map(v=>`<option value="${esc(v)}">`).join('');
+  // filteri padajući
+  fillSelect('f-client',uniqueVals(ORDERS,'klijent'),'Svi klijenti');
+  fillSelect('f-driver',[...new Set(activeDrivers().concat(uniqueVals(TOURS,'vozac')))].sort(),'Svi vozači');
+  fillSelect('f-truck',[...new Set(activeTrucks().concat(uniqueVals(TOURS,'reg')))].sort(),'Svi kamioni');
+  const so='<option value="">Svi statusi naloga</option>'+Object.keys(ORDER_STATUS).map(k=>`<option value="${k}">${ORDER_STATUS[k].label}</option>`).join('');
+  if($('f-status').children.length<=1)$('f-status').innerHTML=so;
+}
+function uniqueVals(arr,key){return[...new Set(arr.map(x=>(x[key]||'').trim()).filter(Boolean))].sort()}
+function fillSelect(id,vals,first){
+  const el=$(id);if(!el)return;const cur=el.value;
+  el.innerHTML=`<option value="">${first}</option>`+vals.map(v=>`<option value="${esc(v)}">${esc(v)}</option>`).join('');
+  if(vals.includes(cur))el.value=cur;
+}
+function openDicts(){if(!requireCap('edit'))return;renderDicts();$('dictsModal').classList.add('open')}
+function closeDicts(){$('dictsModal').classList.remove('open')}
+function renderDicts(){
+  $('dictsBody').innerHTML=DICT_DEFS.map(([k,lbl])=>{
+    const items=(DICTS[k]||[]).map((v,i)=>`<div class="dict-item">${esc(v)}<button onclick="dictRemove('${k}',${i})">✕</button></div>`).join('')||'<span style="font-family:var(--mono);font-size:10.5px;color:var(--text-dim)">prazno</span>';
+    return `<div class="dict-box"><h4>${lbl}</h4><div class="dict-list">${items}</div>
+      <div class="dict-add"><input id="da-${k}" placeholder="dodaj…" onkeydown="if(event.key==='Enter')dictAdd('${k}')"><button class="btn btn-ghost btn-sm" onclick="dictAdd('${k}')">＋</button></div></div>`;
+  }).join('');
+}
+function dictAdd(k){const el=$('da-'+k),v=el.value.trim();if(!v)return;
+  if(!DICTS[k])DICTS[k]=[];if(!DICTS[k].includes(v))DICTS[k].push(v);el.value='';renderDicts();refreshDicts();pushDicts()}
+function dictRemove(k,i){DICTS[k].splice(i,1);renderDicts();refreshDicts();pushDicts()}
+/* ═══════════════════ VOZNI PARK (KAMIONI / VOZAČI) ═══════════════════ */
+const SEED_KAMIONI=["CEAM782", "CEAM783", "CEAM784", "LJ06DIN", "LJ07TCH", "LJ10HGH", "LJ11KJG", "LJ14TUS", "LJ15FET", "LJ29SPK", "LJ30AUK", "LJ31HUB", "LJ325ES", "LJ32HUB", "LJ35DPA", "LJ35FET", "LJ36DEM", "LJ46EIC", "LJ46TUS", "LJ49NBN", "LJ49VFL", "LJ51CTT", "LJ52LDZ", "LJ53EUF", "LJ55EUF", "LJ56ULE", "LJ63ULE", "LJ63VZS", "LJ64ZDN", "LJ65DPA", "LJ665FR", "LJ68VDD", "LJ68ZDN", "LJ69ENJ", "LJ69LDZ", "LJ71DGI", "LJ72ECG", "LJ73ZDN", "LJ73ZTD", "LJ74SPK", "LJ75RAK", "LJ76DAS", "LJ77ULE", "LJ82IPV", "LJ82RSS", "LJ851MA", "LJ852MA", "LJ853MA", "LJ85RAK", "LJ891EC", "LJ90ECG", "LJ91CBH", "LJ91DAS", "LJ92HHT", "LJ94RDI", "LJ95HHT", "LJ96CPG", "LJ96DJA", "LJ96TKT"];
+const SEED_VOZACI=["ALEKSIĆ GORAN", "ALIMPIĆ DJORDJE", "BAČIĆ BRANKO", "BELIĆ SLOBODAN", "BIRČAKOVIĆ DEJAN", "CEROVAC DUŠAN", "CEROVAC MILAN", "CVIJIĆ VLADAN", "DRAGOJEVIĆ NIKOLA", "DJURDJEVIĆ ALEKSANDAR", "GAČEVIĆ MILETA", "GLIŠIĆ ŽIVAN", "IKONIĆ ZORAN", "ILIĆ NEBOJŠA", "ISAILOVIĆ ŽELJKO", "JEVTIĆ NEMANJA", "JEVTIĆ NENAD", "JOVIĆ MILOVAN", "JOVIČIĆ DUŠAN", "KORDIĆ VLADIMIR", "KRSMANOVIĆ ALEKSANDAR", "LULEDŽIJA ILIJA", "MARKOVIĆ DRAGAN", "MIJAILOVIĆ RADIVOJ", "MILIJANOVIĆ DEJAN", "MILUTINOVIĆ NIKOLA", "MITRAŠINOVIĆ SINIŠA", "NEDIĆ SAŠA", "PAVLIČEVIĆ DARKO", "PAVLIČEVIĆ MARKO", "PETROVIĆ ČEDOMIR", "PETROVIĆ NIKOLA", "POPOVIĆ SLAVKO", "POPOVIĆ SLOBODAN", "RADOVIĆ VLADIMIR", "RAKIĆ NEMANJA", "RAKIĆ SAVA", "RISTIĆ DEJAN", "RISTIĆ DRAŽEN", "SAVATIĆ STEVAN", "SAVIĆ ALEKSANDAR", "SAVIĆ ŽELJKO", "SIMEUNOVIĆ ALEKSANDAR", "SIMEUNOVIĆ MIROSLAV", "SLOBODA MIROSLAV", "SRNIĆ NENAD", "STUPAR SAŠA", "TABIĆ GORAN", "TEŠIĆ SLOBODAN", "TRIFUNOVIĆ SLOBODAN", "VALTEROVIĆ BRANISLAV", "VASIĆ SREĆKO", "VIŠNJIĆ GORAN", "VUJEVIĆ MARKO", "VUJKOVIĆ DARKO", "ZEC ALEKSANDAR", "ŽIVKOVIĆ MILOŠ", "ŽIVKOVIĆ VLADIMIR"];
+async function pushKamion(rec){rec.ts=Date.now();
+  const i=KAMIONI.findIndex(k=>k.kamion_id===rec.kamion_id);if(i>=0)KAMIONI[i]=rec;else KAMIONI.push(rec);
+  await kvPut('kamioni',KAMIONI);
+  if(apiConfigured()){try{await apiPost('upsertKamion',{record:rec});setApiStatus(true)}catch(e){setApiStatus(false)}}}
+async function pushVozac(rec){rec.ts=Date.now();
+  const i=VOZACI.findIndex(v=>v.vozac_id===rec.vozac_id);if(i>=0)VOZACI[i]=rec;else VOZACI.push(rec);
+  await kvPut('vozaci',VOZACI);
+  if(apiConfigured()){try{await apiPost('upsertVozac',{record:rec});setApiStatus(true)}catch(e){setApiStatus(false)}}}
+async function delFleet(kind,id){
+  if(!requireCap('edit'))return;
+  if(!confirm('Obrisati iz voznog parka?'))return;
+  if(kind==='kamioni'){KAMIONI=KAMIONI.filter(k=>k.kamion_id!==id);await kvPut('kamioni',KAMIONI);
+    if(apiConfigured()){try{await apiPost('deleteKamion',{kamion_id:id})}catch(e){}}}
+  else{VOZACI=VOZACI.filter(v=>v.vozac_id!==id);await kvPut('vozaci',VOZACI);
+    if(apiConfigured()){try{await apiPost('deleteVozac',{vozac_id:id})}catch(e){}}}
+  renderFleet();refreshDicts();recalc();
+}
+function openFleet(tab){if(!requireCap('edit'))return;FLEET_TAB=tab||FLEET_TAB||'kamioni';$('fleetModal').classList.add('open');setFleetTab(FLEET_TAB)}
+function closeFleet(){$('fleetModal').classList.remove('open')}
+function setFleetTab(tab){FLEET_TAB=tab;
+  $('ft-kamioni').classList.toggle('on',tab==='kamioni');
+  $('ft-vozaci').classList.toggle('on',tab==='vozaci');
+  const sm=tab==='kamioni'?KAMION_STATUS:VOZAC_STATUS;
+  $('fleetStatusFilter').innerHTML='<option value="">Svi statusi</option>'+Object.keys(sm).map(k=>`<option value="${k}">${sm[k].label}</option>`).join('');
+  $('fleetSearch').value='';
+  // red za dodavanje
+  if(tab==='kamioni'){
+    $('fleetAddRow').innerHTML=`<input id="nf-reg" placeholder="Reg. oznaka (npr. LJ06DIN)" style="width:200px" onkeydown="if(event.key==='Enter')fleetAdd()">
+      <input id="nf-marka" placeholder="Marka / opis (opc.)" style="width:200px">
+      <select id="nf-status">${Object.keys(KAMION_STATUS).map(k=>`<option value="${k}">${KAMION_STATUS[k].label}</option>`).join('')}</select>
+      <button class="btn btn-ghost btn-sm" onclick="fleetAdd()">＋ Dodaj kamion</button>`;
+  }else{
+    $('fleetAddRow').innerHTML=`<input id="nf-ime" placeholder="Ime i prezime" style="width:240px" onkeydown="if(event.key==='Enter')fleetAdd()">
+      <input id="nf-tel" placeholder="Telefon (opc.)" style="width:160px">
+      <select id="nf-status">${Object.keys(VOZAC_STATUS).map(k=>`<option value="${k}">${VOZAC_STATUS[k].label}</option>`).join('')}</select>
+      <button class="btn btn-ghost btn-sm" onclick="fleetAdd()">＋ Dodaj vozača</button>`;
+  }
+  $('fleetAddRow').classList.add('fleet-add');
+  renderFleet();
+}
+function fleetAdd(){
+  if(!requireCap('edit'))return;
+  if(FLEET_TAB==='kamioni'){
+    const reg=$('nf-reg').value.trim();if(!reg){toast('Unesi reg. oznaku.','err');return}
+    if(KAMIONI.some(k=>(k.reg||'').toLowerCase()===reg.toLowerCase())){toast('Kamion već postoji.','err');return}
+    pushKamion({kamion_id:uid('K'),reg,marka:$('nf-marka').value.trim(),status:$('nf-status').value,napomena:''});
+    addLog('create','','','Vozni park: dodat kamion '+reg);
+  }else{
+    const ime=$('nf-ime').value.trim();if(!ime){toast('Unesi ime vozača.','err');return}
+    if(VOZACI.some(v=>(v.ime||'').toLowerCase()===ime.toLowerCase())){toast('Vozač već postoji.','err');return}
+    pushVozac({vozac_id:uid('V'),ime,telefon:$('nf-tel').value.trim(),status:$('nf-status').value,napomena:''});
+    addLog('create','','','Vozni park: dodat vozač '+ime);
+  }
+  setFleetTab(FLEET_TAB);refreshDicts();recalc();toast('Dodato.','ok');
+}
+function fleetSetStatus(kind,id,val){
+  if(!requireCap('edit'))return;
+  if(kind==='kamioni'){const k=KAMIONI.find(x=>x.kamion_id===id);if(k){k.status=val;pushKamion(k);addLog('status','','','Kamion '+(k.reg||'')+' → '+(KAMION_STATUS[val]||{}).label)}}
+  else{const v=VOZACI.find(x=>x.vozac_id===id);if(v){v.status=val;pushVozac(v);addLog('status','','','Vozač '+(v.ime||'')+' → '+(VOZAC_STATUS[val]||{}).label)}}
+  renderFleet();refreshDicts();recalc();
+}
+function fleetSetField(kind,id,field,val){
+  if(kind==='kamioni'){const k=KAMIONI.find(x=>x.kamion_id===id);if(k){k[field]=val;pushKamion(k)}}
+  else{const v=VOZACI.find(x=>x.vozac_id===id);if(v){v[field]=val;pushVozac(v)}}
+}
+function renderFleet(){
+  const q=($('fleetSearch').value||'').toLowerCase(),sf=$('fleetStatusFilter').value;
+  if(FLEET_TAB==='kamioni'){
+    $('fleetHead').innerHTML=`<tr><th style="width:40px">#</th><th>Reg. oznaka</th><th>Marka / opis</th><th style="width:200px">Status</th><th>Napomena</th><th style="width:40px"></th></tr>`;
+    let rows=KAMIONI.filter(k=>(!q||(k.reg+' '+(k.marka||'')+' '+(k.napomena||'')).toLowerCase().includes(q))&&(!sf||k.status===sf))
+      .sort((a,b)=>(a.reg||'').localeCompare(b.reg||''));
+    $('fleetBody').innerHTML=rows.length?rows.map((k,i)=>`<tr>
+      <td style="text-align:center;color:var(--text-dim)">${i+1}</td>
+      <td style="font-weight:600">${esc(k.reg||'')}</td>
+      <td><input class="inline-inp" value="${esc(k.marka||'')}" style="width:100%" onchange="fleetSetField('kamioni','${k.kamion_id}','marka',this.value)"></td>
+      <td>${fleetStatusSel('kamioni',k)}</td>
+      <td><input class="inline-inp" value="${esc(k.napomena||'')}" style="width:100%" onchange="fleetSetField('kamioni','${k.kamion_id}','napomena',this.value)"></td>
+      <td style="text-align:center"><button class="btn btn-ghost btn-sm cap-edit" onclick="delFleet('kamioni','${k.kamion_id}')">🗑</button></td></tr>`).join(''):`<tr><td colspan="6" class="empty">Nema kamiona. Klikni „Učitaj početnu bazu“ ili dodaj ručno.</td></tr>`;
+    const fs=fleetStats();
+    $('fleetSummary').textContent=`${fs.trucksTot} kamiona · ${fs.trucksAkt} aktivnih · ${fs.trucksServis} servis · ${fs.trucksNova} NOVA VOZILA · ${fs.trucksNeakt} neaktivnih`;
+  }else{
+    $('fleetHead').innerHTML=`<tr><th style="width:40px">#</th><th>Ime i prezime</th><th style="width:160px">Telefon</th><th style="width:200px">Status</th><th>Napomena</th><th style="width:40px"></th></tr>`;
+    let rows=VOZACI.filter(v=>(!q||(v.ime+' '+(v.telefon||'')+' '+(v.napomena||'')).toLowerCase().includes(q))&&(!sf||v.status===sf))
+      .sort((a,b)=>(a.ime||'').localeCompare(b.ime||''));
+    $('fleetBody').innerHTML=rows.length?rows.map((v,i)=>`<tr>
+      <td style="text-align:center;color:var(--text-dim)">${i+1}</td>
+      <td style="font-weight:600">${esc(v.ime||'')}</td>
+      <td><input class="inline-inp" value="${esc(v.telefon||'')}" style="width:100%" onchange="fleetSetField('vozaci','${v.vozac_id}','telefon',this.value)"></td>
+      <td>${fleetStatusSel('vozaci',v)}</td>
+      <td><input class="inline-inp" value="${esc(v.napomena||'')}" style="width:100%" onchange="fleetSetField('vozaci','${v.vozac_id}','napomena',this.value)"></td>
+      <td style="text-align:center"><button class="btn btn-ghost btn-sm cap-edit" onclick="delFleet('vozaci','${v.vozac_id}')">🗑</button></td></tr>`).join(''):`<tr><td colspan="6" class="empty">Nema vozača. Klikni „Učitaj početnu bazu“ ili dodaj ručno.</td></tr>`;
+    const fs=fleetStats();
+    $('fleetSummary').textContent=`${fs.drvTot} vozača · ${fs.drvAkt} aktivnih · ${fs.drvOdmor} odmor · ${fs.drvNova} NOVA VOZILA · ${fs.drvNeakt} neaktivnih`;
+  }
+}
+function fleetStatusSel(kind,rec){
+  const sm=kind==='kamioni'?KAMION_STATUS:VOZAC_STATUS,id=kind==='kamioni'?rec.kamion_id:rec.vozac_id;
+  const opts=Object.keys(sm).map(k=>`<option value="${k}" ${rec.status===k?'selected':''}>${sm[k].label}</option>`).join('');
+  return `<select class="inline-sel st-${(sm[rec.status]||{}).cls||'gr'}" onchange="fleetSetStatus('${kind}','${id}',this.value)">${opts}</select>`;
+}
+async function seedFleet(){
+  if(!requireCap('edit'))return;
+  if(!confirm('Učitati početnu bazu iz PODACI (59 kamiona, 58 vozača)?\nPostojeći zapisi se NE diraju — dodaju se samo oni kojih nema.'))return;
+  let nk=0,nv=0;
+  for(const reg of SEED_KAMIONI){if(!KAMIONI.some(k=>(k.reg||'').toLowerCase()===reg.toLowerCase())){
+    KAMIONI.push({kamion_id:uid('K'),reg,marka:'',status:'aktivan',napomena:'',ts:Date.now()});nk++}}
+  for(const ime of SEED_VOZACI){if(!VOZACI.some(v=>(v.ime||'').toLowerCase()===ime.toLowerCase())){
+    VOZACI.push({vozac_id:uid('V'),ime,telefon:'',status:'aktivan',napomena:'',ts:Date.now()});nv++}}
+  await kvPut('kamioni',KAMIONI);await kvPut('vozaci',VOZACI);
+  if(apiConfigured()){try{await apiPost('fleetImport',{kamioni:KAMIONI,vozaci:VOZACI});setApiStatus(true)}catch(e){setApiStatus(false)}}
+  await addLog('import','','','Učitana početna baza voznog parka (+'+nk+' kamiona, +'+nv+' vozača)');
+  setFleetTab(FLEET_TAB);refreshDicts();recalc();
+  toast(`Učitano: +${nk} kamiona, +${nv} vozača.`,'ok');
+}
+
+/* ── Nerasporedjeni / servis ── */
+function addNera(){if(!requireCap('edit'))return;const v=$('neraInput').value.trim();if(!v)return;
+  if(!nera.includes(v))nera.push(v);$('neraInput').value='';renderNera();persistMeta()}
+function rmNera(v){if(!requireCap('edit'))return;nera=nera.filter(x=>x!==v);renderNera();persistMeta()}
+function renderNera(){nera=META.nera=nera||[];
+  $('neraList').innerHTML=nera.map(v=>`<div class="nera-tag" ${CAPS.edit?`draggable="true" ondragstart="neraDrag(event,'${esc(v).replace(/'/g,'')}')"`:''}>🅿️ ${esc(v)}${CAPS.edit?`<button onclick="rmNera('${esc(v).replace(/'/g,'')}')">✕</button>`:''}</div>`).join('')||'<span style="font-family:var(--mono);font-size:11px;color:var(--text-dim)">nema</span>';
+  $('b-nera').textContent=nera.length}
+function addServis(){if(!requireCap('edit'))return;const v=$('servisInput').value.trim();if(!v)return;
+  if(!servis.includes(v))servis.push(v);$('servisInput').value='';renderServis();persistMeta()}
+function rmServis(v){if(!requireCap('edit'))return;servis=servis.filter(x=>x!==v);renderServis();persistMeta()}
+function renderServis(){servis=META.servis=servis||[];
+  $('servisList').innerHTML=servis.map(v=>`<div class="nera-tag" style="border-color:var(--blue);color:#1e40af">🔧 ${esc(v)}${CAPS.edit?`<button onclick="rmServis('${esc(v).replace(/'/g,'')}')">✕</button>`:''}</div>`).join('')||'<span style="font-family:var(--mono);font-size:11px;color:var(--text-dim)">nema</span>';
+  $('b-servis').textContent=servis.length}
+
+/* ── KPI ── */
+function fleetStats(){
+  const ks=k=>KAMIONI.filter(x=>x.status===k).length, vs=k=>VOZACI.filter(x=>x.status===k).length;
+  return{
+    trucksTot:KAMIONI.length, trucksAkt:ks('aktivan'), trucksServis:ks('servis'),
+    trucksNova:ks('nova_vozila'), trucksNeakt:ks('neaktivan'),
+    drvTot:VOZACI.length, drvAkt:vs('aktivan'), drvOdmor:vs('odmor'),
+    drvNova:vs('nova_vozila'), drvNeakt:vs('neaktivan')
+  };
+}
+function recalc(){
+  const fs=fleetStats(), hasFleet=KAMIONI.length||VOZACI.length;
+  const trucks=hasFleet?fs.trucksTot:(parseInt($('k-trucks').value)||0);
+  const driversTot=hasFleet?fs.drvTot:(parseInt($('k-drivers').value)||0);
+  const drvRest=VOZACI.length?fs.drvOdmor:(parseInt($('k-drv-rest').value)||0);
+  // ako postoji vozni park, KPI polja postaju prikaz (samo-čitanje)
+  if(KAMIONI.length){$('k-trucks').value=fs.trucksTot;$('k-trucks').disabled=true}
+  if(VOZACI.length){$('k-drivers').value=fs.drvTot;$('k-drivers').disabled=true;$('k-drv-rest').value=fs.drvOdmor;$('k-drv-rest').disabled=true}
+  const p=$('f-period')?$('f-period').value:'all';
+  const tours=TOURS.filter(t=>tourInPeriod(t,p));
+  const ordsAll=ORDERS.filter(o=>orderInPeriod(o,p));
+  const act=tours.filter(t=>!['zavrsena','otkazana'].includes(tourEffStatus(t))).length;
+  let cashT=0,cashP=0,invT=0,invP=0,veh=0,prob=0,docm=0;
+  ordsAll.forEach(o=>{const g=num(o.iznos_gotovina),f=num(o.iznos_faktura);
+    cashT+=g;invT+=f;if(o.gotovina_naplacena)cashP+=g;if(o.faktura_placena)invP+=f;
+    veh+=vehCount(o);if(orderHasProblem(o))prob++;if(docStatus(o).key!=='full')docm++});
+  const grand=cashT+invT,paid=cashP+invP;
+  $('k-tours').textContent=tours.length;$('k-tours-act').textContent=act;
+  $('k-orders').textContent=ordsAll.length;$('k-vehicles').textContent=veh;
+  $('k-value').textContent=money0(grand);$('k-pct').textContent='naplata '+(grand>0?Math.round(paid/grand*100):0)+'%';
+  $('k-cashdue').textContent=money0(cashT-cashP);$('k-invdue').textContent=money0(invT-invP);
+  $('k-prob').textContent=prob;$('k-docmiss').textContent=docm;
+  const servisCnt=KAMIONI.length?fs.trucksServis:servis.length;
+  $('k-break').textContent=servisCnt;$('k-nera').textContent=nera.length;
+  // engaged = aktivni kamioni na živim turama; slobodni = aktivni − angažovani
+  const liveRegs=new Set(tours.filter(t=>!['zavrsena','otkazana'].includes(tourEffStatus(t))&&t.reg).map(t=>t.reg.trim()));
+  if(KAMIONI.length){const slobodni=Math.max(0,fs.trucksAkt-liveRegs.size);$('k-nera').textContent=slobodni}
+  const avail=Math.max(0,driversTot-drvRest);
+  const eng=new Set(tours.filter(t=>t.vozac).map(t=>t.vozac.trim().toLowerCase())).size;
+  $('k-drv-sub').textContent=`${Math.min(eng,avail)} uposleno · ${Math.max(0,avail-eng)} slobodno · ${drvRest} odmor${fs.drvNova?` · ${fs.drvNova} NOVA`:''}`;
+  $('k-tours-sub').textContent=`${tours.length} u periodu`;
+  const tk=$('k-trucks-sub');if(tk)tk.textContent=KAMIONI.length?`${fs.trucksAkt} akt · ${fs.trucksServis} servis · ${fs.trucksNova} NOVA`:'';
+  $('b-table').textContent=VIEW==='orders'?ordsAll.length+' naloga':tours.length+' tura';
+}
+/* ═══════════════════ FORMA: TURA + NALOZI ═══════════════════ */
+function fillStatusSelects(){
+  const to=Object.keys(TOUR_STATUS).map(k=>`<option value="${k}">${TOUR_STATUS[k].label}</option>`).join('');
+  $('t-status').innerHTML=to;
+  const oo=Object.keys(ORDER_STATUS).map(k=>`<option value="${k}">${ORDER_STATUS[k].label}</option>`).join('');
+  $('bulk-status').innerHTML='<option value="">— status —</option>'+oo;
+}
+function vehNew(seed){return Object.assign({vid:'v'+(++_ocSeq),marka_model:'',vin:'',opis:'',nu:0,fa:0,saob:0,ex:0},seed||{})}
+function newOrder(seed){
+  const o=Object.assign({_cid:'oc'+(++_ocSeq),order_id:'',broj_naloga:'',klijent:'',kontakt:'',telefon_email:'',
+    mesto_utovara:'',adresa_utovara:'',kontakt_utovar:'',datum_utovara:'',termin_utovara:'',
+    mesto_istovara:'',adresa_istovara:'',kontakt_istovar:'',datum_istovara:'',termin_istovara:'',
+    vozila:[],status_naloga:'ugovoren',
+    iznos_gotovina:'',gotovina_naplacena:0,iznos_faktura:'',faktura_placena:0,
+    problem:0,cekanje:0,blokada:0,steta:0,otkazano:0,prioritet:'0',napomena:'',interna_napomena:'',_collapsed:false},seed||{});
+  o.vozila=normVozila(o.vozila);
+  if(!o.vozila.length)o.vozila=[vehNew()];
+  return o;
+}
+/* Normalizuje vozila (string iz Sheets-a, legacy polja, ili niz) u niz objekata */
+function normVozila(v){
+  if(Array.isArray(v))return v.map(x=>vehNew(x));
+  if(typeof v==='string'&&v.trim()){try{const p=JSON.parse(v);if(Array.isArray(p))return p.map(x=>vehNew(x))}catch(e){}}
+  return [];
+}
+function vehCount(o){return (o.vozila&&o.vozila.length)||0}
+function vehText(o){return (o.vozila||[]).map(v=>[v.marka_model,v.vin,v.opis].filter(Boolean).join(' ')).join(' ')}
+function vehSummary(o){const vs=o.vozila||[];if(!vs.length)return '—';
+  const names=vs.map(v=>v.marka_model||'?').filter(Boolean);
+  if(vs.length===1)return esc(names[0]||'1 vozilo');
+  return esc(vs.length+' voz: '+names.slice(0,3).join(', ')+(vs.length>3?'…':''));}
+function addOrderCard(seed){if(!requireCap('edit'))return;formOrders.push(newOrder(seed));renderOrderCards();
+  const last=$('ordCards').lastElementChild;if(last)last.scrollIntoView({behavior:'smooth',block:'nearest'})}
+function ocSet(cid,k,v){const o=formOrders.find(x=>x._cid===cid);if(o){o[k]=v;updateOrdSummary()}}
+function ocToggle(cid,k,el){const o=formOrders.find(x=>x._cid===cid);if(!o)return;o[k]=el.checked?1:0;
+  el.closest('.chk').classList.toggle('on',el.checked);
+  if(['problem','steta','blokada'].includes(k)){const card=el.closest('.ord-card');if(card)card.classList.toggle('problem',orderHasProblem(o))}
+  updateOrdSummary()}
+function ocCollapse(cid){const o=formOrders.find(x=>x._cid===cid);if(o){o._collapsed=!o._collapsed;
+  const card=document.querySelector(`.ord-card[data-cid="${cid}"]`);if(card)card.classList.toggle('collapsed',o._collapsed)}}
+function ocDelete(cid){if(!confirm('Obrisati ovaj nalog iz forme?'))return;formOrders=formOrders.filter(x=>x._cid!==cid);renderOrderCards()}
+function ocDup(cid){const o=formOrders.find(x=>x._cid===cid);if(!o)return;const c=newOrder(o);c.order_id='';formOrders.push(c);renderOrderCards()}
+function ocMove(cid,dir){const i=formOrders.findIndex(x=>x._cid===cid);if(i<0)return;const j=i+dir;
+  if(j<0||j>=formOrders.length)return;const tmp=formOrders[i];formOrders[i]=formOrders[j];formOrders[j]=tmp;renderOrderCards()}
+function updateOrdSummary(){
+  $('ordCount').textContent='('+formOrders.length+')';
+  let c=0,f=0,v=0;formOrders.forEach(o=>{c+=num(o.iznos_gotovina);f+=num(o.iznos_faktura);v+=vehCount(o)});
+  $('ordSummary').textContent=`${v} vozila · gotovina ${money0(c)} · fakture ${money0(f)} · ukupno ${money0(c+f)}`;
+}
+function inp(o,k,ph,opt){opt=opt||{};const list=opt.list?`list="${opt.list}"`:'';const t=opt.type||'text';
+  return `<input data-k="${k}" type="${t}" ${list} placeholder="${ph||''}" value="${esc(o[k])}" oninput="ocSet('${o._cid}','${k}',this.value)">`}
+function ta(o,k,ph){return `<textarea data-k="${k}" placeholder="${ph||''}" oninput="ocSet('${o._cid}','${k}',this.value)">${esc(o[k])}</textarea>`}
+function flagChk(o,k,lbl,kind){const on=o[k]?'on '+kind:'';return `<label class="chk ${on}"><input type="checkbox" ${o[k]?'checked':''} onchange="ocToggle('${o._cid}','${k}',this)">${lbl}</label>`}
+/* ── Vozila u nalogu (forma) ── */
+function vehRows(o){
+  const vs=o.vozila||[];
+  if(!vs.length)return '<div class="empty" style="padding:14px">Nema vozila. Klikni „＋ Dodaj vozilo“.</div>';
+  return vs.map((v,i)=>`<div class="veh-row" data-vid="${v.vid}">
+    <span class="veh-idx">${i+1}</span>
+    <input class="veh-mm" list="dl-vehtypes" placeholder="Marka / model" value="${esc(v.marka_model)}" oninput="ocVehSet('${o._cid}','${v.vid}','marka_model',this.value)">
+    <input class="veh-vin" placeholder="VIN / tablica" value="${esc(v.vin)}" oninput="ocVehSet('${o._cid}','${v.vid}','vin',this.value)">
+    <input class="veh-opis" placeholder="opis (boja, godište…)" value="${esc(v.opis)}" oninput="ocVehSet('${o._cid}','${v.vid}','opis',this.value)">
+    <span class="veh-docs">${DOC_DEFS.map(([k,l])=>`<label class="chk ${v[k]?'on ok':''}" title="${l}"><input type="checkbox" ${v[k]?'checked':''} onchange="ocVehDoc('${o._cid}','${v.vid}','${k}',this)">${l}</label>`).join('')}</span>
+    <button type="button" class="veh-del" title="Ukloni vozilo" onclick="ocVehDel('${o._cid}','${v.vid}')">✕</button>
+  </div>`).join('');
+}
+function vehWrapRefresh(cid){const o=formOrders.find(x=>x._cid===cid);if(!o)return;
+  const w=$('veh-'+cid);if(w)w.innerHTML=vehRows(o);updateOrdSummary();
+  const card=document.querySelector(`.ord-card[data-cid="${cid}"]`);if(card)card.classList.toggle('problem',orderHasProblem(o));}
+function ocVehAdd(cid){const o=formOrders.find(x=>x._cid===cid);if(!o)return;o.vozila=o.vozila||[];o.vozila.push(vehNew());vehWrapRefresh(cid)}
+function ocVehDel(cid,vid){const o=formOrders.find(x=>x._cid===cid);if(!o)return;o.vozila=(o.vozila||[]).filter(v=>v.vid!==vid);vehWrapRefresh(cid)}
+function ocVehSet(cid,vid,k,val){const o=formOrders.find(x=>x._cid===cid);if(!o)return;const v=(o.vozila||[]).find(x=>x.vid===vid);if(v){v[k]=val;updateOrdSummary()}}
+function ocVehDoc(cid,vid,k,el){const o=formOrders.find(x=>x._cid===cid);if(!o)return;const v=(o.vozila||[]).find(x=>x.vid===vid);if(v){v[k]=el.checked?1:0;el.closest('.chk').classList.toggle('on',el.checked);el.closest('.chk').classList.toggle('ok',el.checked)}}
+function renderOrderCards(){
+  const wrap=$('ordCards');
+  if(!formOrders.length){wrap.innerHTML='<div class="empty">Nema naloga. Klikni „＋ Dodaj nalog“ da dodaš prvi nalog u turu.</div>';updateOrdSummary();return}
+  wrap.innerHTML=formOrders.map((o,idx)=>{
+    const stOpts=Object.keys(ORDER_STATUS).map(k=>`<option value="${k}" ${o.status_naloga===k?'selected':''}>${ORDER_STATUS[k].label}</option>`).join('');
+    const title=`${o.klijent||'(klijent?)'} <span class="dim">· ${o.mesto_utovara||'?'} → ${o.mesto_istovara||'?'} · ${(ORDER_STATUS[o.status_naloga]||{}).label||''}</span>`;
+    return `<div class="ord-card ${orderHasProblem(o)?'problem':''} ${o._collapsed?'collapsed':''}" data-cid="${o._cid}">
+      <div class="ord-chead" onclick="if(event.target.tagName!=='BUTTON')ocCollapse('${o._cid}')">
+        <span class="ord-num">${idx+1}</span><span class="ord-ctitle">${title}</span>
+        <div class="ord-cacts">
+          <button onclick="ocMove('${o._cid}',-1)" title="Gore">▲</button>
+          <button onclick="ocMove('${o._cid}',1)" title="Dole">▼</button>
+          <button onclick="ocDup('${o._cid}')" title="Kopiraj">⧉</button>
+          <button class="del" onclick="ocDelete('${o._cid}')" title="Obriši">✕</button>
+          <span class="ord-ccaret">▾</span>
+        </div></div>
+      <div class="ord-cbody"><div class="subgrid">
+        <div class="subhdr">Klijent i nalog</div>
+        <div class="fld"><label>Broj naloga / ref.</label>${inp(o,'broj_naloga','REF-001')}</div>
+        <div class="fld"><label>Klijent <span class="req">*</span></label>${inp(o,'klijent','npr. AutoCommerce',{list:'dl-clients'})}</div>
+        <div class="fld"><label>Kontakt osoba</label>${inp(o,'kontakt','Ime Prezime')}</div>
+        <div class="fld"><label>Telefon / e-mail</label>${inp(o,'telefon_email','+381…')}</div>
+        <div class="subhdr">Utovar</div>
+        <div class="fld"><label>Mesto utovara <span class="req">*</span></label>${inp(o,'mesto_utovara','Minhen',{list:'dl-loadplaces'})}</div>
+        <div class="fld"><label>Adresa utovara</label>${inp(o,'adresa_utovara','ulica i broj')}</div>
+        <div class="fld"><label>Kontakt na utovaru</label>${inp(o,'kontakt_utovar','')}</div>
+        <div class="fld"><label>Datum / termin</label><div style="display:flex;gap:5px">${inp(o,'datum_utovara','',{type:'date'})}${inp(o,'termin_utovara','08:00',{type:'time'})}</div></div>
+        <div class="subhdr">Istovar</div>
+        <div class="fld"><label>Mesto istovara <span class="req">*</span></label>${inp(o,'mesto_istovara','Beograd',{list:'dl-unloadplaces'})}</div>
+        <div class="fld"><label>Adresa istovara</label>${inp(o,'adresa_istovara','ulica i broj')}</div>
+        <div class="fld"><label>Kontakt na istovaru</label>${inp(o,'kontakt_istovar','')}</div>
+        <div class="fld"><label>Datum / termin</label><div style="display:flex;gap:5px">${inp(o,'datum_istovara','',{type:'date'})}${inp(o,'termin_istovara','',{type:'time'})}</div></div>
+        <div class="subhdr">Vozila i dokumentacija (po vozilu)</div>
+        <div class="fld span4" style="padding:0">
+          <div class="veh-wrap" id="veh-${o._cid}">${vehRows(o)}</div>
+          <button type="button" class="btn btn-ghost btn-sm cap-edit" onclick="ocVehAdd('${o._cid}')" style="margin-top:7px">＋ Dodaj vozilo</button>
+        </div>
+        <div class="subhdr">Status i oznake</div>
+        <div class="fld"><label>Status naloga</label><select data-k="status_naloga" onchange="ocSet('${o._cid}','status_naloga',this.value)">${stOpts}</select></div>
+        <div class="fld span3"><label>Oznake</label><div class="chkrow">
+          ${flagChk(o,'problem','Problem','danger')}${flagChk(o,'cekanje','Čekanje','warn')}${flagChk(o,'blokada','Blokada','danger')}${flagChk(o,'steta','Šteta','warn')}${flagChk(o,'otkazano','Otkazano','danger')}</div></div>
+        <div class="subhdr cap-finance">Plaćanje</div>
+        <div class="fld cap-finance"><label>Iznos gotovina (€)</label>${inp(o,'iznos_gotovina','0,00')}</div>
+        <div class="fld cap-finance" style="justify-content:flex-end">${flagChk(o,'gotovina_naplacena','Gotovina naplaćena','ok')}</div>
+        <div class="fld cap-finance"><label>Iznos faktura (€)</label>${inp(o,'iznos_faktura','0,00')}</div>
+        <div class="fld cap-finance" style="justify-content:flex-end">${flagChk(o,'faktura_placena','Faktura plaćena','ok')}</div>
+        <div class="subhdr">Napomene</div>
+        <div class="fld span2"><label>Napomena (vidljiva)</label>${ta(o,'napomena','')}</div>
+        <div class="fld span2"><label>Interna napomena</label>${ta(o,'interna_napomena','')}</div>
+        <div class="fld"><label>Prioritet naloga</label><select data-k="prioritet" onchange="ocSet('${o._cid}','prioritet',this.value)">
+          <option value="0" ${o.prioritet=='0'?'selected':''}>Normalno</option><option value="1" ${o.prioritet=='1'?'selected':''}>Visok</option><option value="2" ${o.prioritet=='2'?'selected':''}>Hitno</option></select></div>
+      </div></div></div>`;
+  }).join('');
+  updateOrdSummary();
+}
+function readTuraForm(){
+  return{broj_ture:$('t-broj').value.trim(),reg:$('t-reg').value.trim(),
+    vozac:$('t-vozac').value.trim(),status_ture:$('t-status').value,
+    datum_polaska:$('t-polazak').value,datum_zavrsetka:$('t-zavrsetak').value,gps:$('t-gps').value.trim(),
+    prioritet:$('t-prio').value,interna_oznaka:$('t-interna').value.trim(),napomena:$('t-napomena').value.trim()}
+}
+function clearForm(ask){
+  if(ask&&(editTourId||formOrders.length)&&!confirm('Očistiti formu?'))return;
+  ['t-broj','t-reg','t-vozac','t-gps','t-interna','t-napomena','t-polazak','t-zavrsetak'].forEach(id=>$(id).value='');
+  $('t-status').value='u_pripremi';$('t-prio').value='0';
+  formOrders=[];editTourId=null;_removedOrderIds=[];
+  $('formTitle').textContent='Unos nove ture';$('editBadge').style.display='none';
+  $('saveBtn').textContent='✓ Sačuvaj turu';$('dupBtn').style.display='none';
+  $('formInfo').textContent='Popuni turu i bar jedan nalog, pa sačuvaj.';
+  renderOrderCards();
+}
+let _removedOrderIds=[];
+function loadForm(t){
+  $('t-broj').value=t.broj_ture||'';$('t-reg').value=t.reg||'';
+  $('t-vozac').value=t.vozac||'';$('t-status').value=t.status_ture||suggestTourStatus(t);
+  $('t-polazak').value=t.datum_polaska||'';$('t-zavrsetak').value=t.datum_zavrsetka||'';$('t-gps').value=t.gps||'';
+  $('t-prio').value=t.prioritet||'0';$('t-interna').value=t.interna_oznaka||'';$('t-napomena').value=t.napomena||'';
+  editTourId=t.tour_id;_removedOrderIds=[];
+  formOrders=ordersOfTour(t.tour_id).map(o=>newOrder(Object.assign({},o)));
+  $('formTitle').textContent='Izmena ture: '+(t.broj_ture||t.reg||'');
+  $('editBadge').style.display='inline-block';$('saveBtn').textContent='✓ Sačuvaj izmene';$('dupBtn').style.display='inline-block';
+  $('formInfo').textContent='Menjaš turu (ID: '+t.tour_id+')';
+  renderOrderCards();$('sec-form').classList.remove('collapsed');$('sec-form').scrollIntoView({behavior:'smooth',block:'start'});
+}
+function validateForm(tura){
+  const errs=[];
+  if(!tura.broj_ture&&!tura.reg)errs.push('Unesi broj ture ili reg. oznaku kamiona.');
+  if(!formOrders.length)errs.push('Tura mora imati bar jedan nalog.');
+  formOrders.forEach((o,i)=>{const n=i+1;
+    if(!o.klijent.trim())errs.push(`Nalog ${n}: nedostaje klijent.`);
+    if(!o.mesto_utovara.trim())errs.push(`Nalog ${n}: nedostaje mesto utovara.`);
+    if(!o.mesto_istovara.trim())errs.push(`Nalog ${n}: nedostaje mesto istovara.`);
+    if(!vehCount(o))errs.push(`Nalog ${n}: dodaj bar jedno vozilo.`);
+    if(o.datum_utovara&&o.datum_istovara&&o.datum_istovara<o.datum_utovara)errs.push(`Nalog ${n}: datum istovara je pre utovara.`);
+    if(o.status_naloga==='utovaren'&&!o.datum_utovara)errs.push(`Nalog ${n}: status „utovaren“ a nema datum utovara.`);
+    if(o.status_naloga==='isporuceno'&&!o.datum_istovara)errs.push(`Nalog ${n}: status „isporučeno“ a nema datum istovara.`);
+    if(o.gotovina_naplacena&&num(o.iznos_gotovina)<=0)errs.push(`Nalog ${n}: gotovina označena kao naplaćena, a iznos je 0.`);
+    if(o.faktura_placena&&num(o.iznos_faktura)<=0)errs.push(`Nalog ${n}: faktura označena kao plaćena, a iznos je 0.`);
+  });
+  return errs;
+}
+async function saveTura(addNew){
+  if(!requireCap('edit'))return;
+  const tura=readTuraForm();
+  const errs=validateForm(tura);
+  if(errs.length){toast(errs[0],'err');alert('Ispravi pre čuvanja:\n\n• '+errs.join('\n• '));return}
+  const btn=$('saveBtn'),orig=btn.textContent;btn.textContent='… čuvam';
+  const now=Date.now(),op=(CURRENT_USER&&CURRENT_USER.name)||'?';
+  const isNew=!editTourId;
+  const tourId=editTourId||uid('T');
+  const existing=TOURS.find(t=>t.tour_id===tourId);
+  const tourRec=Object.assign({},existing||{},tura,{tour_id:tourId,
+    operater_izmenio:op,izmenjeno:fmtClock(new Date()),ts:now});
+  if(isNew){tourRec.operater_kreirao=op;tourRec.kreirano=fmtClock(new Date());
+    if(!tourRec.broj_ture)tourRec.broj_ture='T-'+new Date().getFullYear()+'-'+String(TOURS.length+1).padStart(3,'0')}
+  await pushTour(tourRec);
+  // nalozi
+  for(let i=0;i<formOrders.length;i++){
+    const o=formOrders[i];const oid=o.order_id||uid('O');
+    const rec={};['broj_naloga','klijent','kontakt','telefon_email','mesto_utovara','adresa_utovara','kontakt_utovar',
+      'datum_utovara','termin_utovara','mesto_istovara','adresa_istovara','kontakt_istovar','datum_istovara','termin_istovara',
+      'status_naloga','iznos_gotovina','gotovina_naplacena','iznos_faktura','faktura_placena',
+      'problem','cekanje','blokada','steta','otkazano','prioritet','napomena','interna_napomena'].forEach(k=>rec[k]=o[k]);
+    rec.vozila=(o.vozila||[]).map(v=>({vid:v.vid,marka_model:v.marka_model||'',vin:v.vin||'',opis:v.opis||'',nu:v.nu?1:0,fa:v.fa?1:0,saob:v.saob?1:0,ex:v.ex?1:0}));
+    rec.broj_vozila=rec.vozila.length;
+    rec.order_id=oid;rec.tour_id=tourId;rec.redni_broj=i+1;
+    rec.izmenjeno=fmtClock(new Date());if(!o.order_id)rec.kreirano=fmtClock(new Date());
+    await pushOrder(rec);
+  }
+  // obrisani nalozi
+  for(const rid of _removedOrderIds){await removeOrderRemote(rid)}
+  _removedOrderIds=[];
+  await addLog(isNew?'create':'update',tourId,'',(isNew?'Kreirana':'Izmenjena')+' tura '+(tourRec.broj_ture||'')+' ('+formOrders.length+' naloga)');
+  btn.textContent='✓ Sačuvano!';btn.style.background='var(--green)';
+  setTimeout(()=>{btn.textContent=orig;btn.style.background='var(--accent)'},1600);
+  refreshDicts();renderAll();recalc();
+  if(addNew){clearForm(false)}else{toast('Tura sačuvana.','ok');clearForm(false)}
+}
+function duplicateCurrentForm(){
+  if(!formOrders.length){toast('Nema šta da se duplira.','err');return}
+  editTourId=null;_removedOrderIds=[];
+  formOrders=formOrders.map(o=>{const c=newOrder(Object.assign({},o));c.order_id='';return c});
+  $('t-broj').value='';$('t-status').value='u_pripremi';
+  $('formTitle').textContent='Unos nove ture (kopija)';$('editBadge').style.display='none';
+  $('saveBtn').textContent='✓ Sačuvaj turu';$('dupBtn').style.display='none';
+  renderOrderCards();toast('Tura duplirana — sačuvaj kao novu.','ok');
+}
+function editTour(tid){const t=TOURS.find(x=>x.tour_id===tid);if(t)loadForm(t)}
+async function delTour(tid){
+  if(!requireCap('edit'))return;
+  const t=TOURS.find(x=>x.tour_id===tid);if(!t)return;
+  const ords=ordersOfTour(tid);
+  if(!confirm(`Obrisati turu "${t.broj_ture||t.reg}" i njenih ${ords.length} naloga?`))return;
+  for(const o of ords)await removeOrderRemote(o.order_id);
+  await removeTourRemote(tid);
+  TOURS=TOURS.filter(x=>x.tour_id!==tid);ORDERS=ORDERS.filter(x=>x.tour_id!==tid);
+  await addLog('delete',tid,'','Obrisana tura '+(t.broj_ture||''));
+  renderAll();recalc();toast('Tura obrisana.','ok');
+}
+async function delOrder(oid){
+  if(!requireCap('edit'))return;
+  const o=ORDERS.find(x=>x.order_id===oid);if(!o)return;
+  if(!confirm('Obrisati nalog "'+(o.broj_naloga||o.klijent||oid)+'"?'))return;
+  await removeOrderRemote(oid);ORDERS=ORDERS.filter(x=>x.order_id!==oid);
+  await addLog('delete',o.tour_id,oid,'Obrisan nalog '+(o.klijent||''));
+  renderAll();recalc();toast('Nalog obrisan.','ok');
+}
+/* ── Premesti / kopiraj nalog u drugu turu ── */
+function openMove(oid){
+  if(!requireCap('edit'))return;moveCtx=oid;
+  const o=ORDERS.find(x=>x.order_id===oid);
+  $('moveTitle').textContent='Premesti / kopiraj: '+(o.klijent||oid);
+  $('moveTarget').innerHTML=TOURS.filter(t=>t.tour_id!==o.tour_id).map(t=>`<option value="${t.tour_id}">${esc(t.broj_ture||t.reg||t.tour_id)}</option>`).join('')
+    ||'<option value="">(nema drugih tura)</option>';
+  $('moveStatus').textContent='';$('moveModal').classList.add('open');
+}
+function closeMove(){$('moveModal').classList.remove('open');moveCtx=null}
+async function confirmMove(copy){
+  const tgt=$('moveTarget').value;if(!tgt){toast('Izaberi ciljnu turu.','err');return}
+  const o=ORDERS.find(x=>x.order_id===moveCtx);if(!o)return;
+  const cnt=ordersOfTour(tgt).length;
+  if(copy){const rec=Object.assign({},o,{order_id:uid('O'),tour_id:tgt,redni_broj:cnt+1,kreirano:fmtClock(new Date())});
+    await pushOrder(rec);await addLog('create',tgt,rec.order_id,'Kopiran nalog '+(o.klijent||''))}
+  else{o.tour_id=tgt;o.redni_broj=cnt+1;await pushOrder(o);await addLog('update',tgt,o.order_id,'Premešten nalog '+(o.klijent||''))}
+  closeMove();renderAll();recalc();toast(copy?'Nalog kopiran.':'Nalog premešten.','ok');
+}
+/* ═══════════════════ RENDER — DISPEČER ═══════════════════ */
+function setView(v){VIEW=v;SELECTED.clear();
+  ['tours','orders','gantt'].forEach(x=>$('vt-'+x).classList.toggle('on',x===v));
+  $('tblWrap').classList.toggle('off',v==='gantt');
+  $('ganttWrap').classList.toggle('on',v==='gantt');
+  $('topScroll').style.display=v==='gantt'?'none':'';
+  $('ganttToolbar').style.display=v==='gantt'?'flex':'none';
+  $('bulkBar').style.display='none';
+  renderAll();
+}
+function toggleChip(f){CHIPS[f]=!CHIPS[f];
+  const el=document.querySelector('.fchip[data-f="'+f+'"]');if(el)el.classList.toggle('on',CHIPS[f]);
+  renderAll();}
+function clearSelection(){SELECTED.clear();renderAll()}
+function updateBulkBar(){
+  const n=SELECTED.size;const bb=$('bulkBar');
+  if(n>0&&VIEW!=='gantt'&&CAPS.edit){bb.style.display='flex';$('bulkCount').textContent=n+' izabrano'}
+  else bb.style.display='none';
+}
+/* ── Filteri ── */
+function anyOrderFilter(){return!!($('f-status').value||$('f-client').value||$('f-search').value.trim()||Object.keys(CHIPS).some(k=>CHIPS[k]))}
+function orderMatch(o){
+  const t=TOURS.find(x=>x.tour_id===o.tour_id)||{};
+  const fs=$('f-status').value;if(fs&&(o.status_naloga||'')!==fs)return false;
+  const fc=$('f-client').value;if(fc&&(o.klijent||'')!==fc)return false;
+  const fd=$('f-driver').value;if(fd&&(t.vozac||'')!==fd)return false;
+  const ft=$('f-truck').value;if(ft&&(t.reg||'')!==ft)return false;
+  const p=$('f-period').value;if(p&&p!=='all'&&!orderInPeriod(o,p))return false;
+  if(CHIPS.docmiss&&docStatus(o).key==='full')return false;
+  if(CHIPS.cashdue&&!(num(o.iznos_gotovina)>0&&!o.gotovina_naplacena))return false;
+  if(CHIPS.invdue&&!(num(o.iznos_faktura)>0&&!o.faktura_placena))return false;
+  if(CHIPS.problem&&!orderHasProblem(o))return false;
+  if(CHIPS.delnopay&&!(o.status_naloga==='isporuceno'&&orderPayStatus(o).key!=='full'))return false;
+  if(CHIPS.late&&!orderLate(o))return false;
+  if(CHIPS.today){const d0=todayYmd(),d1=ymdLocal(new Date(Date.now()+864e5));
+    if(!(o.datum_utovara===d0||o.datum_utovara===d1||o.datum_istovara===d0||o.datum_istovara===d1))return false}
+  const q=$('f-search').value.trim().toLowerCase();
+  if(q){const hay=[o.broj_naloga,o.klijent,o.kontakt,o.mesto_utovara,o.mesto_istovara,vehText(o),o.napomena,t.broj_ture,t.reg,t.vozac].join(' ').toLowerCase();
+    if(!hay.includes(q))return false}
+  return true;
+}
+function tourPass(t){
+  const fd=$('f-driver').value;if(fd&&(t.vozac||'')!==fd)return false;
+  const ft=$('f-truck').value;if(ft&&(t.reg||'')!==ft)return false;
+  const p=$('f-period').value;if(p&&p!=='all'&&!tourInPeriod(t,p))return false;
+  return true;
+}
+/* ── Sortiranje ── */
+function setSort(k){if(SORT.key===k)SORT.dir*=-1;else{SORT.key=k;SORT.dir=1}renderAll()}
+function cmp(a,b){return a<b?-1:a>b?1:0}
+function sortTours(arr){const k=SORT.key,d=SORT.dir;
+  const val={prioritet:t=>num(t.prioritet),broj_ture:t=>t.broj_ture||'',reg:t=>t.reg||'',vozac:t=>t.vozac||'',
+    status:t=>TOUR_STATUS[tourEffStatus(t)]?TOUR_STATUS[tourEffStatus(t)].label:'',
+    load:t=>tourLoadDate(t)||'~',value:t=>tourTotals(t).grand,pct:t=>tourTotals(t).pct,orders:t=>tourTotals(t).orders};
+  const f=val[k]||val.broj_ture;
+  return arr.sort((a,b)=>cmp(f(a),f(b))*d)}
+function sortOrders(arr){const k=SORT.key,d=SORT.dir;
+  const tof=id=>TOURS.find(x=>x.tour_id===id)||{};
+  const val={broj_ture:o=>tof(o.tour_id).broj_ture||'',reg:o=>tof(o.tour_id).reg||'',vozac:o=>tof(o.tour_id).vozac||'',
+    redni_broj:o=>num(o.redni_broj),klijent:o=>o.klijent||'',load:o=>o.datum_utovara||'~',unload:o=>o.datum_istovara||'~',
+    status:o=>ORDER_STATUS[o.status_naloga]?ORDER_STATUS[o.status_naloga].label:'',broj_vozila:o=>vehCount(o),
+    total:o=>orderTotal(o)};
+  const f=val[k]||val.broj_ture;
+  return arr.sort((a,b)=>cmp(f(a),f(b))*d)}
+function sortArrow(k){return SORT.key===k?(SORT.dir>0?' ▲':' ▼'):''}
+/* ── Helperi za ćelije ── */
+function pill(cls,label){return `<span class="pill ${cls}">${esc(label)}</span>`}
+function docBadges(o){
+  return '<span class="docbadges">'+DOC_DEFS.map(([k,l])=>{
+    const all=docAll(o,k),some=docSome(o,k);
+    return `<span class="docb ${all?'on':some?'part':'off'}" title="${l}">${l}</span>`}).join('')+'</span>'}
+function flagBadges(o){return ORDER_FLAGS.filter(([k])=>o[k]).map(([k,l,c])=>`<span class="bflag ${c}">${l}</span>`).join(' ')}
+function statusSelect(o){
+  if(!CAPS.edit)return pill(ORDER_STATUS[o.status_naloga]?ORDER_STATUS[o.status_naloga].cls:'gr',ORDER_STATUS[o.status_naloga]?ORDER_STATUS[o.status_naloga].label:(o.status_naloga||'—'));
+  const opts=Object.keys(ORDER_STATUS).map(k=>`<option value="${k}" ${o.status_naloga===k?'selected':''}>${ORDER_STATUS[k].label}</option>`).join('');
+  return `<select class="inline-sel st-${ORDER_STATUS[o.status_naloga]?ORDER_STATUS[o.status_naloga].cls:'gr'}" onchange="inlineStatus('${o.order_id}',this.value)">${opts}</select>`}
+/* doc badge koji jednim klikom postavlja dokument na SVA vozila u nalogu */
+function docToggle(o,field,label){
+  const all=docAll(o,field),some=docSome(o,field),cls=all?'on':some?'part':'off';
+  if(!CAPS.edit)return `<span class="docb ${cls}" title="${label}">${label}</span>`;
+  return `<span class="docb ${cls}" style="cursor:pointer" onclick="inlineDoc('${o.order_id}','${field}')" title="${label} — klik postavlja na sva vozila">${label}</span>`}
+function docToggles(o){
+  const n=vehCount(o),ds=docStatus(o);
+  return '<span class="docbadges" title="'+ds.have+'/'+ds.total+' dokumenata">'+
+    DOC_DEFS.map(([k,l])=>docToggle(o,k,l)).join('')+(n>1?`<span class="docb" style="background:var(--surface3);color:var(--text-dim)">${n}🚗</span>`:'')+'</span>'}
+function payCell(o,field,amount){
+  const amt=money(amount);
+  if(!CAPS.finance)return '<span style="color:var(--text-dim)">•••</span>';
+  const chk=CAPS.edit?`<label class="inline-fin"><input type="checkbox" ${o[field]?'checked':''} onchange="inlinePay('${o.order_id}','${field}')">${amt}</label>`
+    :`<span class="inline-fin">${o[field]?'✓ ':''}${amt}</span>`;
+  return chk}
+function payCell(o,field,amount){
+  const amt=money(amount);
+  if(!CAPS.finance)return '<span style="color:var(--text-dim)">•••</span>';
+  const chk=CAPS.edit?`<label class="inline-fin"><input type="checkbox" ${o[field]?'checked':''} onchange="inlinePay('${o.order_id}','${field}')">${amt}</label>`
+    :`<span class="inline-fin">${o[field]?'✓ ':''}${amt}</span>`;
+  return chk}
+/* ── renderAll dispečer ── */
+function renderAll(){
+  refreshFilters();
+  if(VIEW==='gantt'){renderGantt();updateBulkBar();return}
+  if(VIEW==='orders')renderOrdersTable();else renderToursTable();
+  updateBulkBar();syncTopScroll();
+}
+let _filterTimer=null;
+function refreshFilters(){/* placeholder za buduće dopune padajućih */}
+/* ── Tabela: PO TURAMA ── */
+let OPEN_TOURS={};
+function renderToursTable(){
+  const head=`<tr>
+    <th style="width:26px"></th><th style="width:30px" title="Prioritet">⚑</th>
+    <th onclick="setSort('broj_ture')" style="cursor:pointer">Tura${sortArrow('broj_ture')}</th>
+    <th onclick="setSort('reg')" style="cursor:pointer">Kamion${sortArrow('reg')}</th>
+    <th onclick="setSort('vozac')" style="cursor:pointer">Vozač${sortArrow('vozac')}</th>
+    <th onclick="setSort('orders')" style="cursor:pointer;text-align:center">Nal.${sortArrow('orders')}</th>
+    <th style="text-align:center">Voz.</th>
+    <th>Utovar →</th><th>→ Istovar</th>
+    <th onclick="setSort('load')" style="cursor:pointer">Datumi${sortArrow('load')}</th>
+    <th onclick="setSort('status')" style="cursor:pointer">Status${sortArrow('status')}</th>
+    <th style="text-align:center">Dok.</th>
+    <th class="cap-finance" style="text-align:right">Gotovina</th>
+    <th class="cap-finance" style="text-align:right">Faktura</th>
+    <th class="cap-finance" onclick="setSort('value')" style="cursor:pointer;text-align:right">Vrednost${sortArrow('value')}</th>
+    <th class="cap-finance" onclick="setSort('pct')" style="cursor:pointer;text-align:center">Naplata${sortArrow('pct')}</th>
+    <th style="text-align:right">Akcije</th></tr>`;
+  $('tblHead').innerHTML=head;
+  const visO=ORDERS.filter(orderMatch);
+  const byTour={};visO.forEach(o=>{(byTour[o.tour_id]=byTour[o.tour_id]||[]).push(o)});
+  let tours=TOURS.filter(t=>byTour[t.tour_id]&&byTour[t.tour_id].length);
+  if(!anyOrderFilter()){TOURS.forEach(t=>{if(!ordersOfTour(t.tour_id).length&&tourPass(t)&&!tours.includes(t))tours.push(t)})}
+  tours=sortTours(tours);
+  if(!tours.length){$('tblBody').innerHTML=`<tr><td colspan="17" class="empty">Nema tura za prikaz.</td></tr>`;return}
+  let html='';
+  tours.forEach(t=>{
+    const tt=tourTotals(t),eff=tourEffStatus(t),ts=TOUR_STATUS[eff]||{label:eff,cls:'gr'};
+    const open=!!OPEN_TOURS[t.tour_id];
+    const prob=tt.problems>0;
+    html+=`<tr class="tour-row ${open?'open':''}" onclick="toggleTour('${t.tour_id}')">
+      <td><span class="exp-caret">▶</span></td>
+      <td style="text-align:center">${num(t.prioritet)>=2?'🔴':num(t.prioritet)==1?'🟠':''}</td>
+      <td>${esc(t.broj_ture||'—')}${prob?' <span class="bflag problem">!</span>':''}</td>
+      <td>${esc(t.reg||'—')}</td>
+      <td>${esc(t.vozac||'—')}</td>
+      <td style="text-align:center">${tt.orders}</td>
+      <td style="text-align:center">${tt.vehicles}</td>
+      <td>${esc(firstLoad(t))}</td><td>${esc(lastUnload(t))}</td>
+      <td style="white-space:nowrap;font-size:10.5px">${dmy(tourLoadDate(t))||'—'}${tourUnloadDate(t)?' → '+dmy(tourUnloadDate(t)):''}</td>
+      <td>${pill(ts.cls,ts.label)}${t.status_ture?'':' <span title="auto" style="color:var(--text-dim);font-size:9px">auto</span>'}</td>
+      <td style="text-align:center">${pill(tt.docKey==='full'?'g':tt.docKey==='none'?'r':'y',tt.docmiss?tt.docmiss+'✗':'OK')}</td>
+      <td class="cap-finance" style="text-align:right;white-space:nowrap">${money0(tt.cashTotal)}${tt.cashDue>0?'<br><span style="color:var(--red);font-size:10px">−'+money0(tt.cashDue)+'</span>':''}</td>
+      <td class="cap-finance" style="text-align:right;white-space:nowrap">${money0(tt.invTotal)}${tt.invDue>0?'<br><span style="color:var(--red);font-size:10px">−'+money0(tt.invDue)+'</span>':''}</td>
+      <td class="cap-finance" style="text-align:right;font-weight:600">${money0(tt.grand)}</td>
+      <td class="cap-finance" style="text-align:center">${pctBadge(tt.pct)}</td>
+      <td style="text-align:right;white-space:nowrap" onclick="event.stopPropagation()">
+        <button class="btn btn-ghost btn-sm" onclick="exportTuraPDF('${t.tour_id}')" title="PDF">📄</button>
+        <button class="btn btn-ghost btn-sm cap-edit" onclick="editTour('${t.tour_id}')" title="Izmeni">✎</button>
+        <button class="btn btn-ghost btn-sm cap-edit" onclick="delTour('${t.tour_id}')" title="Obriši">🗑</button>
+      </td></tr>`;
+    if(open){
+      const ords=(byTour[t.tour_id]||ordersOfTour(t.tour_id)).slice().sort((a,b)=>(num(a.redni_broj))-(num(b.redni_broj)));
+      if(!ords.length)html+=`<tr class="order-sub"><td></td><td colspan="16" style="color:var(--text-dim)">Nema naloga u ovoj turi.</td></tr>`;
+      ords.forEach(o=>{
+        const sel=SELECTED.has(o.order_id);
+        html+=`<tr class="order-sub">
+          <td onclick="event.stopPropagation()" style="text-align:center"><input type="checkbox" class="cap-edit" ${sel?'checked':''} onchange="toggleSel('${o.order_id}')"></td>
+          <td style="text-align:center">${flagBadges(o)||(num(o.prioritet)>=2?'🔴':'')}</td>
+          <td colspan="2" style="font-weight:400">#${o.redni_broj||''} ${esc(o.klijent||'—')}${o.broj_naloga?' <span style="color:var(--text-dim);font-size:10px">('+esc(o.broj_naloga)+')</span>':''}</td>
+          <td colspan="1" style="font-size:10.5px">${vehSummary(o)}</td>
+          <td style="text-align:center">${vehCount(o)}</td><td></td>
+          <td style="font-size:10.5px">${esc(o.mesto_utovara||'—')}<br><span style="color:var(--text-dim)">${dmy(o.datum_utovara)} ${esc(o.termin_utovara||'')}</span></td>
+          <td style="font-size:10.5px">${esc(o.mesto_istovara||'—')}<br><span style="color:var(--text-dim)">${dmy(o.datum_istovara)} ${esc(o.termin_istovara||'')}</span></td>
+          <td onclick="event.stopPropagation()">${statusSelect(o)}</td>
+          <td onclick="event.stopPropagation()" style="text-align:center">${docToggles(o)}</td>
+          <td class="cap-finance" onclick="event.stopPropagation()" style="text-align:right">${payCell(o,'gotovina_naplacena',o.iznos_gotovina)}</td>
+          <td class="cap-finance" onclick="event.stopPropagation()" style="text-align:right">${payCell(o,'faktura_placena',o.iznos_faktura)}</td>
+          <td class="cap-finance" style="text-align:right">${money0(orderTotal(o))}</td>
+          <td class="cap-finance" style="text-align:center">${pill(orderPayStatus(o).cls,orderPayStatus(o).label)}</td>
+          <td style="text-align:right;white-space:nowrap" onclick="event.stopPropagation()">
+            <button class="btn btn-ghost btn-sm" onclick="exportOrderPDF('${o.order_id}')" title="PDF">📄</button>
+            <button class="btn btn-ghost btn-sm cap-edit" onclick="openMove('${o.order_id}')" title="Premesti">⇄</button>
+            <button class="btn btn-ghost btn-sm cap-edit" onclick="delOrder('${o.order_id}')" title="Obriši">🗑</button>
+          </td></tr>`;
+      });
+    }
+  });
+  $('tblBody').innerHTML=html;
+  applyRoleClasses();
+}
+function toggleTour(tid){OPEN_TOURS[tid]=!OPEN_TOURS[tid];renderToursTable()}
+function firstLoad(t){const o=ordersOfTour(t.tour_id).filter(x=>x.mesto_utovara)[0];return o?o.mesto_utovara:'—'}
+function lastUnload(t){const a=ordersOfTour(t.tour_id).filter(x=>x.mesto_istovara);return a.length?a[a.length-1].mesto_istovara:'—'}
+function pctBadge(p){const cls=p>=100?'g':p>=50?'y':p>0?'o':'r';return pill(cls,p+'%')}
+/* ── Tabela: PO NALOZIMA ── */
+function renderOrdersTable(){
+  const head=`<tr>
+    <th style="width:26px"></th><th style="width:30px">⚑</th>
+    <th onclick="setSort('broj_ture')" style="cursor:pointer">Tura${sortArrow('broj_ture')}</th>
+    <th onclick="setSort('reg')" style="cursor:pointer">Kamion${sortArrow('reg')}</th>
+    <th onclick="setSort('vozac')" style="cursor:pointer">Vozač${sortArrow('vozac')}</th>
+    <th onclick="setSort('redni_broj')" style="cursor:pointer;text-align:center">#${sortArrow('redni_broj')}</th>
+    <th onclick="setSort('klijent')" style="cursor:pointer">Klijent</th>
+    <th>Utovar</th><th onclick="setSort('load')" style="cursor:pointer">Dat./term.${sortArrow('load')}</th>
+    <th>Istovar</th><th onclick="setSort('unload')" style="cursor:pointer">Dat./term.${sortArrow('unload')}</th>
+    <th onclick="setSort('broj_vozila')" style="cursor:pointer;text-align:center">Voz.${sortArrow('broj_vozila')}</th>
+    <th style="text-align:center">Dok.</th>
+    <th onclick="setSort('status')" style="cursor:pointer">Status${sortArrow('status')}</th>
+    <th class="cap-finance" style="text-align:right">Gotovina</th>
+    <th class="cap-finance" style="text-align:right">Faktura</th>
+    <th class="cap-finance" onclick="setSort('total')" style="cursor:pointer;text-align:right">Ukupno${sortArrow('total')}</th>
+    <th>Napomena</th><th style="text-align:right">Akcije</th></tr>`;
+  $('tblHead').innerHTML=head;
+  let ords=sortOrders(ORDERS.filter(orderMatch));
+  if(!ords.length){$('tblBody').innerHTML=`<tr><td colspan="19" class="empty">Nema naloga za prikaz.</td></tr>`;return}
+  let html='';
+  ords.forEach(o=>{
+    const t=TOURS.find(x=>x.tour_id===o.tour_id)||{};const sel=SELECTED.has(o.order_id);
+    const late=orderLate(o);
+    html+=`<tr ${late?'style="background:#fff5f5"':''}>
+      <td style="text-align:center"><input type="checkbox" class="cap-edit" ${sel?'checked':''} onchange="toggleSel('${o.order_id}')"></td>
+      <td style="text-align:center">${flagBadges(o)||(late?'<span class="bflag problem" title="kasni">⏰</span>':'')}</td>
+      <td>${esc(t.broj_ture||'—')}</td><td>${esc(t.reg||'—')}</td><td>${esc(t.vozac||'—')}</td>
+      <td style="text-align:center">${o.redni_broj||''}</td>
+      <td>${esc(o.klijent||'—')}${o.broj_naloga?'<br><span style="color:var(--text-dim);font-size:10px">'+esc(o.broj_naloga)+'</span>':''}</td>
+      <td style="font-size:11px">${esc(o.mesto_utovara||'—')}</td>
+      <td style="font-size:10.5px;white-space:nowrap">${dmy(o.datum_utovara)||'—'}<br><span style="color:var(--text-dim)">${esc(o.termin_utovara||'')}</span></td>
+      <td style="font-size:11px">${esc(o.mesto_istovara||'—')}</td>
+      <td style="font-size:10.5px;white-space:nowrap">${dmy(o.datum_istovara)||'—'}<br><span style="color:var(--text-dim)">${esc(o.termin_istovara||'')}</span></td>
+      <td style="text-align:center" title="${esc(vehText(o))}">${vehCount(o)}</td>
+      <td style="text-align:center">${docToggles(o)}</td>
+      <td>${statusSelect(o)}</td>
+      <td class="cap-finance" style="text-align:right">${payCell(o,'gotovina_naplacena',o.iznos_gotovina)}</td>
+      <td class="cap-finance" style="text-align:right">${payCell(o,'faktura_placena',o.iznos_faktura)}</td>
+      <td class="cap-finance" style="text-align:right;font-weight:600">${money0(orderTotal(o))}<br>${pill(orderPayStatus(o).cls,orderPayStatus(o).label)}</td>
+      <td style="font-size:10.5px;max-width:160px">${esc(o.napomena||'')}</td>
+      <td style="text-align:right;white-space:nowrap">
+        <button class="btn btn-ghost btn-sm" onclick="exportOrderPDF('${o.order_id}')" title="PDF">📄</button>
+        <button class="btn btn-ghost btn-sm cap-edit" onclick="editTour('${o.tour_id}')" title="Otvori turu">✎</button>
+        <button class="btn btn-ghost btn-sm cap-edit" onclick="openMove('${o.order_id}')" title="Premesti">⇄</button>
+        <button class="btn btn-ghost btn-sm cap-edit" onclick="delOrder('${o.order_id}')" title="Obriši">🗑</button>
+      </td></tr>`;
+  });
+  $('tblBody').innerHTML=html;
+  applyRoleClasses();
+}
+function applyRoleClasses(){/* CSS body klase (no-finance/no-edit) već sakrivaju .cap-* — ništa dodatno */}
+/* ── Selekcija + masovne akcije ── */
+function toggleSel(oid){if(SELECTED.has(oid))SELECTED.delete(oid);else SELECTED.add(oid);updateBulkBar()}
+async function bulkSetStatus(){if(!requireCap('edit'))return;
+  const v=$('bulk-status').value;if(!v){toast('Izaberi status.','err');return}
+  for(const oid of SELECTED){const o=ORDERS.find(x=>x.order_id===oid);if(o){o.status_naloga=v;o.izmenjeno=fmtClock(new Date());await pushOrder(o)}}
+  await addLog('update','','','Masovna promena statusa ('+SELECTED.size+') → '+ORDER_STATUS[v].label);
+  SELECTED.clear();renderAll();recalc();toast('Status promenjen.','ok');
+}
+async function bulkSetDoc(){if(!requireCap('edit'))return;
+  for(const oid of SELECTED){const o=ORDERS.find(x=>x.order_id===oid);if(o){(o.vozila||[]).forEach(v=>{v.nu=1;v.fa=1;v.saob=1;v.ex=1});o.izmenjeno=fmtClock(new Date());await pushOrder(o)}}
+  await addLog('update','','','Masovno čekirana dokumentacija ('+SELECTED.size+' naloga, sva vozila)');
+  SELECTED.clear();renderAll();recalc();toast('Dokumentacija označena.','ok');
+}
+async function bulkMarkPaid(){if(!requireCap('finance')){toast('Nemate pristup finansijama.','err');return}
+  for(const oid of SELECTED){const o=ORDERS.find(x=>x.order_id===oid);if(o){
+    if(num(o.iznos_gotovina)>0)o.gotovina_naplacena=1;if(num(o.iznos_faktura)>0)o.faktura_placena=1;
+    o.izmenjeno=fmtClock(new Date());await pushOrder(o)}}
+  await addLog('payment','','','Masovno označena naplata ('+SELECTED.size+')');
+  SELECTED.clear();renderAll();recalc();toast('Naplata označena.','ok');
+}
+/* ── Inline izmene iz tabele ── */
+async function inlineStatus(oid,v){if(!requireCap('edit'))return;
+  const o=ORDERS.find(x=>x.order_id===oid);if(!o)return;const old=o.status_naloga;
+  o.status_naloga=v;o.izmenjeno=fmtClock(new Date());await pushOrder(o);
+  await addLog('status',o.tour_id,oid,'Status: '+(ORDER_STATUS[old]?ORDER_STATUS[old].label:old)+' → '+ORDER_STATUS[v].label,old,v);
+  renderAll();recalc();
+}
+async function inlineDoc(oid,field){if(!requireCap('edit'))return;
+  const o=ORDERS.find(x=>x.order_id===oid);if(!o)return;
+  const vs=o.vozila||[];if(!vs.length){toast('Nalog nema vozila.','err');return}
+  const target=docAll(o,field)?0:1; // ako svi imaju → skini sa svih, inače stavi na sve
+  vs.forEach(v=>v[field]=target);
+  o.izmenjeno=fmtClock(new Date());await pushOrder(o);
+  const lbl=(DOC_DEFS.find(d=>d[0]===field)||[,field])[1];
+  await addLog('doc',o.tour_id,oid,'Dokument '+lbl+' → '+(target?'DA':'NE')+' (sva vozila)');
+  renderAll();recalc();
+}
+async function inlinePay(oid,field){if(!requireCap('finance')){toast('Nemate pristup finansijama.','err');renderAll();return}
+  const o=ORDERS.find(x=>x.order_id===oid);if(!o)return;
+  const amtField=field==='gotovina_naplacena'?'iznos_gotovina':'iznos_faktura';
+  if(!o[field]&&num(o[amtField])<=0){toast('Iznos mora biti veći od 0 da bi se označilo naplaćeno.','err');renderAll();return}
+  o[field]=o[field]?0:1;o.izmenjeno=fmtClock(new Date());await pushOrder(o);
+  await addLog('payment',o.tour_id,oid,(field==='gotovina_naplacena'?'Gotovina':'Faktura')+' → '+(o[field]?'naplaćeno':'nije'));
+  renderAll();recalc();
+}
+/* ── Horizontalni scroll iznad tabele ── */
+function syncTopScroll(){
+  const w=$('tblWrap'),ts=$('topScroll'),inner=$('topScrollInner');if(!w||!ts||!inner)return;
+  const tbl=w.querySelector('table');if(!tbl)return;
+  inner.style.width=tbl.scrollWidth+'px';
+}
+/* ═══════════════════ GANTT ═══════════════════ */
+let DRAG=null;
+function setGanttMode(m){GANTT_MODE=m;$('gm-truck').classList.toggle('on',m==='truck');$('gm-order').classList.toggle('on',m==='order');renderGantt()}
+function ganttWeek(d){if(d===0)ganttOffset=0;else ganttOffset+=d;renderGantt()}
+function neraDrag(ev,reg){DRAG={type:'nera',reg};ev.dataTransfer.effectAllowed='move'}
+function renderGantt(){
+  const [ws,we]=weekRange(ganttOffset);
+  const start=new Date(ws+'T00:00:00');
+  const days=[];for(let i=0;i<7;i++){const d=new Date(start);d.setDate(start.getDate()+i);days.push(d)}
+  $('ganttWeekLbl').textContent=dmy(ws)+' – '+dmy(we)+(ganttOffset===0?' (tekuća)':'');
+  const dn=['Pon','Uto','Sre','Čet','Pet','Sub','Ned'];
+  const today=todayYmd();
+  let head=`<div class="gantt-head"><div></div>`+days.map((d,i)=>{const y=ymdLocal(d);
+    return `<div class="gantt-day ${y===today?'today':''}">${dn[i]}<span class="date">${pad(d.getDate())}.${pad(d.getMonth()+1)}</span></div>`}).join('')+`</div>`;
+  // legenda
+  $('ganttLegend').innerHTML=Object.keys(ORDER_STATUS).map(k=>`<span style="display:inline-flex;align-items:center;gap:4px;font-size:10px;color:var(--text-mid)"><span style="width:11px;height:11px;border-radius:2px;display:inline-block" class="leg-${k}"></span>${ORDER_STATUS[k].label}</span>`).join('');
+  applyLegendColors();
+  let rows='';
+  if(GANTT_MODE==='truck'){
+    // red = kamion (reg); bar = tura unutar sedmice
+    const regs=[...new Set(TOURS.filter(t=>t.reg).map(t=>t.reg.trim()))].sort();
+    nera.forEach(r=>{if(!regs.includes(r))regs.push(r)});
+    if(!regs.length){$('ganttInner').innerHTML=head+`<div class="gantt-empty">Nema kamiona. Dodaj turu sa registracijom.</div>`;return}
+    regs.forEach(reg=>{
+      const tours=TOURS.filter(t=>(t.reg||'').trim()===reg&&tourPass(t));
+      let cells=`<div class="gantt-reg">${esc(reg)}${nera.includes(reg)?'<span class="driver">🅿️ neraspoređen</span>':''}</div>`;
+      cells+=days.map((d,i)=>{const y=ymdLocal(d);return `<div class="gantt-cell ${y===today?'today':''}" data-date="${y}" data-reg="${esc(reg)}" ondragover="ganttOver(event)" ondragleave="ganttLeave(event)" ondrop="ganttDrop(event)"></div>`}).join('');
+      // postavi trake za ture čiji opseg pada u sedmicu
+      let bars='';
+      tours.forEach(t=>{
+        const ld=tourLoadDate(t),ud=tourUnloadDate(t)||ld;if(!ld)return;
+        const s=clampIdx(ld,ws,we),e=clampIdx(ud||ld,ws,we);
+        if(s<0&&e<0)return;const a=Math.max(0,s<0?0:s),b=Math.min(6,e<0?6:e);
+        if(b<a)return;
+        const tt=tourTotals(t),eff=tourEffStatus(t);
+        const cls=tt.problems?'problem':eff==='zavrsena'?'isporuceno':eff==='otkazana'?'otkazano':'';
+        const lleft=`calc(190px + (100% - 190px) * ${a} / 7 + 2px)`;
+        const wbar=`calc((100% - 190px) * ${b-a+1} / 7 - 4px)`;
+        bars+=`<div class="gantt-bar ${cls} ${num(t.prioritet)>=2?'prio':''}" draggable="${CAPS.edit?'true':'false'}"
+          ondragstart="ganttBarDrag(event,'${t.tour_id}')"
+          style="left:${lleft};width:${wbar}" title="${esc(ganttTip(t))}" onclick="editTour('${t.tour_id}')">${esc(t.broj_ture||reg)} · ${tt.orders}n/${tt.vehicles}v</div>`;
+      });
+      rows+=`<div class="gantt-row" style="position:relative">${cells}${bars}</div>`;
+    });
+  }else{
+    // red = nalog (klijent), bar = utovar→istovar
+    const ords=ORDERS.filter(orderMatch).filter(o=>o.datum_utovara||o.datum_istovara);
+    if(!ords.length){$('ganttInner').innerHTML=head+`<div class="gantt-empty">Nema naloga sa datumima u ovoj sedmici.</div>`;return}
+    ords.sort((a,b)=>cmp(a.datum_utovara||'',b.datum_utovara||''));
+    ords.forEach(o=>{
+      const t=TOURS.find(x=>x.tour_id===o.tour_id)||{};
+      const ld=o.datum_utovara||o.datum_istovara,ud=o.datum_istovara||o.datum_utovara;
+      const s=clampIdx(ld,ws,we),e=clampIdx(ud,ws,we);
+      if(s<0&&e<0)return;const a=Math.max(0,s<0?0:s),b=Math.min(6,e<0?6:e);if(b<a)return;
+      let cells=`<div class="gantt-reg">${esc(o.klijent||'—')}<span class="driver">${esc(t.reg||'')} · ${esc(o.mesto_utovara||'')}→${esc(o.mesto_istovara||'')}</span></div>`;
+      cells+=days.map((d)=>{const y=ymdLocal(d);return `<div class="gantt-cell ${y===today?'today':''}"></div>`}).join('');
+      const lleft=`calc(190px + (100% - 190px) * ${a} / 7 + 2px)`,wbar=`calc((100% - 190px) * ${b-a+1} / 7 - 4px)`;
+      const cls=(o.status_naloga||'ugovoren')+(orderLate(o)?' late':'')+(orderHasProblem(o)?' problem':'');
+      const bar=`<div class="gantt-bar ${cls} ${num(o.prioritet)>=2?'prio':''}" style="left:${lleft};width:${wbar}" title="${esc(ganttOrdTip(o,t))}" onclick="editTour('${o.tour_id}')">${vehCount(o)}v · ${vehSummary(o)}</div>`;
+      rows+=`<div class="gantt-row" style="position:relative">${cells}${bar}</div>`;
+    });
+  }
+  $('ganttInner').innerHTML=head+rows;
+}
+function clampIdx(ymd,ws,we){if(!ymd)return-1;if(ymd<ws)return-99;if(ymd>we)return 99;
+  const a=new Date(ws+'T00:00:00'),b=new Date(ymd+'T00:00:00');return Math.round((b-a)/864e5)}
+function ganttTip(t){const tt=tourTotals(t);
+  return `Tura ${t.broj_ture||''}\nKamion: ${t.reg||''}\nVozač: ${t.vozac||''}\nNaloga: ${tt.orders} · Vozila: ${tt.vehicles}\nStatus: ${(TOUR_STATUS[tourEffStatus(t)]||{}).label||''}\nVrednost: ${money(tt.grand)} · Naplata ${tt.pct}%`+
+  (tt.problems?'\n⚠ '+tt.problems+' problem.':'')}
+function ganttOrdTip(o,t){return `${o.klijent||''} (${t.broj_ture||''})\n${o.mesto_utovara||''} → ${o.mesto_istovara||''}\nUtovar: ${dmy(o.datum_utovara)} ${o.termin_utovara||''}\nIstovar: ${dmy(o.datum_istovara)} ${o.termin_istovara||''}\nVozila (${vehCount(o)}): ${vehText(o)}\nStatus: ${(ORDER_STATUS[o.status_naloga]||{}).label||''}`}
+function applyLegendColors(){
+  const map={ugovoren:'--text-dim',rasporedjen:'--blue',najavljen:'--purple',utovaren:'--navy',lokal:'--orange',isporuceno:'--green'};
+  let css='';Object.keys(map).forEach(k=>css+=`.leg-${k}{background:var(${map[k]})}`);
+  let st=$('legStyle');if(!st){st=document.createElement('style');st.id='legStyle';document.head.appendChild(st)}st.textContent=css;
+}
+/* ── Drag & drop u Gantt-u ── */
+function ganttBarDrag(ev,tid){if(!CAPS.edit){ev.preventDefault();return}DRAG={type:'tour',tid};ev.dataTransfer.effectAllowed='move'}
+function ganttOver(ev){if(!DRAG)return;ev.preventDefault();ev.currentTarget.classList.add('drop-target')}
+function ganttLeave(ev){ev.currentTarget.classList.remove('drop-target')}
+async function ganttDrop(ev){
+  ev.preventDefault();const cell=ev.currentTarget;cell.classList.remove('drop-target');
+  if(!DRAG||!CAPS.edit)return;
+  const date=cell.getAttribute('data-date'),reg=cell.getAttribute('data-reg');
+  if(DRAG.type==='nera'){
+    // dodeli neraspoređeni kamion novoj turi? — samo info, premesti u "raspoređene"
+    nera=nera.filter(x=>x!==DRAG.reg);renderNera();persistMeta();toast('Kamion '+DRAG.reg+' označen kao raspoređen.','ok');DRAG=null;return;
+  }
+  const t=TOURS.find(x=>x.tour_id===DRAG.tid);if(!t){DRAG=null;return}
+  // promena kamiona prevlačenjem na drugi red
+  let changed=[];
+  if(reg&&reg!==(t.reg||'').trim()){const old=t.reg;t.reg=reg;changed.push('kamion '+(old||'—')+'→'+reg)}
+  // pomeranje datuma: pomeri sve naloge tako da prvi utovar padne na ciljani datum
+  if(date){
+    const ld=tourLoadDate(t);
+    if(ld){const diff=Math.round((new Date(date+'T00:00:00')-new Date(ld+'T00:00:00'))/864e5);
+      if(diff!==0){const ords=ordersOfTour(t.tour_id);
+        for(const o of ords){o.datum_utovara=shiftYmd(o.datum_utovara,diff);o.datum_istovara=shiftYmd(o.datum_istovara,diff);o.izmenjeno=fmtClock(new Date());await pushOrder(o)}
+        if(t.datum_polaska)t.datum_polaska=shiftYmd(t.datum_polaska,diff);
+        if(t.datum_zavrsetka)t.datum_zavrsetka=shiftYmd(t.datum_zavrsetka,diff);
+        changed.push('datumi +'+diff+'d')}}
+  }
+  if(changed.length){t.izmenjeno=fmtClock(new Date());await pushTour(t);
+    await addLog('update',t.tour_id,'','Gantt: '+changed.join(', '));
+    renderGantt();recalc();toast('Tura ažurirana ('+changed.join(', ')+').','ok')}
+  DRAG=null;
+}
+function shiftYmd(ymd,days){if(!ymd)return ymd;const d=new Date(ymd+'T00:00:00');d.setDate(d.getDate()+days);return ymdLocal(d)}
+/* ═══════════════════ PDF (HTML → print, pune dijakritike) ═══════════════════ */
+function showPdfPreview(title,bodyHtml){
+  $('pdfModalTitle').textContent='📄 '+title;
+  const doc=`<!doctype html><html lang="sr"><head><meta charset="utf-8">
+  <style>
+    *{box-sizing:border-box}
+    body{font-family:'Segoe UI',Arial,sans-serif;color:#1a1a1a;margin:0;padding:26px 30px;font-size:12px;line-height:1.45}
+    .hd{display:flex;justify-content:space-between;align-items:flex-start;border-bottom:3px solid #b91c1c;padding-bottom:12px;margin-bottom:16px}
+    .brand{font-size:22px;font-weight:800;color:#b91c1c;letter-spacing:.5px}
+    .brand small{display:block;font-size:10px;color:#555;font-weight:600;letter-spacing:2px;margin-top:2px}
+    .meta{text-align:right;font-size:10.5px;color:#555}
+    h1{font-size:16px;margin:0 0 4px}
+    h2{font-size:12.5px;margin:18px 0 7px;color:#b91c1c;border-bottom:1px solid #e5e5e5;padding-bottom:3px;text-transform:uppercase;letter-spacing:.06em}
+    table{width:100%;border-collapse:collapse;margin:6px 0 12px;font-size:10.5px}
+    th,td{border:1px solid #d4d4d4;padding:5px 7px;text-align:left;vertical-align:top}
+    th{background:#f3f4f6;font-weight:700;text-transform:uppercase;font-size:9px;letter-spacing:.04em}
+    td.r,th.r{text-align:right}.td-c{text-align:center}
+    .kv{display:grid;grid-template-columns:repeat(4,1fr);gap:6px 16px;margin:6px 0}
+    .kv div b{display:block;font-size:9px;color:#777;text-transform:uppercase;letter-spacing:.05em;font-weight:700}
+    .kv div span{font-size:12px}
+    .tot{font-weight:700;background:#fef2f2}
+    .badge{display:inline-block;padding:1px 6px;border-radius:3px;font-size:9px;font-weight:700;background:#eee}
+    .foot{margin-top:20px;border-top:1px solid #e5e5e5;padding-top:8px;font-size:9.5px;color:#888;display:flex;justify-content:space-between}
+    @media print{body{padding:0}.noprint{display:none}}
+  </style></head><body>
+  <div class="hd"><div class="brand">BALKAN AVTO<small>PLANER UTOVARA POLOVNIH VOZILA</small></div>
+    <div class="meta">Generisano: ${fmtClock(new Date())}<br>Operater: ${esc((CURRENT_USER&&CURRENT_USER.name)||'—')}</div></div>
+  ${bodyHtml}
+  <div class="foot"><span>Balkan Avto — interni dokument</span><span>www.balkanavto • dispečerska služba</span></div>
+  </body></html>`;
+  const f=$('pdfFrame');f.srcdoc=doc;
+  $('pdfDownloadBtn').onclick=()=>{try{f.contentWindow.focus();f.contentWindow.print()}catch(e){toast('Štampa nije uspela.','err')}};
+  $('pdfModal').classList.add('open');
+}
+function closePdfPreview(){$('pdfModal').classList.remove('open');$('pdfFrame').srcdoc=''}
+function exportTuraPDF(tid){
+  const t=TOURS.find(x=>x.tour_id===tid);if(!t)return;
+  const ords=ordersOfTour(tid),tt=tourTotals(t);
+  const fin=CAPS.finance;
+  let body=`<h1>Tura ${esc(t.broj_ture||'')}</h1>
+  <div class="kv">
+    <div><b>Kamion</b><span>${esc(t.reg||'—')}</span></div>
+    <div><b>Vozač</b><span>${esc(t.vozac||'—')}</span></div>
+    <div><b>Status</b><span>${esc((TOUR_STATUS[tourEffStatus(t)]||{}).label||'')}</span></div>
+    <div><b>Vozila ukupno</b><span>${tt.vehicles}</span></div>
+    <div><b>Polazak</b><span>${dmy(t.datum_polaska)||'—'}</span></div>
+    <div><b>Završetak</b><span>${dmy(t.datum_zavrsetka)||'—'}</span></div>
+    <div><b>GPS</b><span>${esc(t.gps||'—')}</span></div>
+    <div><b>Interna oznaka</b><span>${esc(t.interna_oznaka||'—')}</span></div>
+  </div>${t.napomena?`<div style="font-size:11px"><b>Napomena:</b> ${esc(t.napomena)}</div>`:''}
+  <h2>Nalozi (${ords.length})</h2>`;
+  ords.forEach(o=>{
+    const ds=docStatus(o);
+    body+=`<h2 style="font-size:11.5px;color:#111;border:none;margin:14px 0 4px">#${o.redni_broj||''} — ${esc(o.klijent||'')}${o.broj_naloga?' ('+esc(o.broj_naloga)+')':''}${flagBadgesTxt(o)}</h2>
+      <div class="kv" style="grid-template-columns:repeat(3,1fr)">
+        <div><b>Utovar</b><span>${esc(o.mesto_utovara||'—')} · ${dmy(o.datum_utovara)} ${esc(o.termin_utovara||'')}</span></div>
+        <div><b>Istovar</b><span>${esc(o.mesto_istovara||'—')} · ${dmy(o.datum_istovara)} ${esc(o.termin_istovara||'')}</span></div>
+        <div><b>Status</b><span>${esc((ORDER_STATUS[o.status_naloga]||{}).label||'')}</span></div>
+      </div>
+      <table><thead><tr><th>#</th><th>Marka / model</th><th>VIN / tablica</th><th>Opis</th><th class="td-c">NU</th><th class="td-c">FA</th><th class="td-c">SAOB</th><th class="td-c">EX</th></tr></thead><tbody>`;
+    (o.vozila||[]).forEach((v,i)=>{
+      body+=`<tr><td>${i+1}</td><td>${esc(v.marka_model||'')}</td><td>${esc(v.vin||'')}</td><td>${esc(v.opis||'')}</td>
+        <td class="td-c">${v.nu?'✓':'—'}</td><td class="td-c">${v.fa?'✓':'—'}</td><td class="td-c">${v.saob?'✓':'—'}</td><td class="td-c">${v.ex?'✓':'—'}</td></tr>`;
+    });
+    body+=`</tbody></table><div style="font-size:10px;color:#666">Dokumentacija: ${ds.have}/${ds.total}${fin?` · Gotovina ${money(o.iznos_gotovina)}${o.gotovina_naplacena?' ✓':''} · Faktura ${money(o.iznos_faktura)}${o.faktura_placena?' ✓':''} · Ukupno ${money(orderTotal(o))}`:''}</div>`;
+  });
+  if(fin)body+=`<h2>Finansijski sažetak</h2><div class="kv">
+    <div><b>Gotovina ukupno</b><span>${money(tt.cashTotal)}</span></div><div><b>Naplaćeno</b><span>${money(tt.cashPaid)}</span></div>
+    <div><b>Faktura ukupno</b><span>${money(tt.invTotal)}</span></div><div><b>Plaćeno</b><span>${money(tt.invPaid)}</span></div>
+    <div><b>Vrednost ture</b><span>${money(tt.grand)}</span></div><div><b>Nenaplaćeno</b><span>${money(tt.cashDue+tt.invDue)}</span></div>
+    <div><b>Procenat naplate</b><span>${tt.pct}%</span></div><div><b>Problemi</b><span>${tt.problems}</span></div></div>`;
+  showPdfPreview('Tura '+(t.broj_ture||''),body);
+}
+function flagBadgesTxt(o){const f=ORDER_FLAGS.filter(([k])=>o[k]).map(([,l])=>l);return f.length?' <span class="badge">'+f.join(', ')+'</span>':''}
+function exportOrderPDF(oid){
+  const o=ORDERS.find(x=>x.order_id===oid);if(!o)return;const t=TOURS.find(x=>x.tour_id===o.tour_id)||{};const fin=CAPS.finance;
+  let body=`<h1>Nalog #${o.redni_broj||''} — ${esc(o.klijent||'')}</h1>
+  <div class="kv">
+    <div><b>Tura</b><span>${esc(t.broj_ture||'—')}</span></div><div><b>Kamion</b><span>${esc(t.reg||'—')}</span></div>
+    <div><b>Vozač</b><span>${esc(t.vozac||'—')}</span></div><div><b>Referenca</b><span>${esc(o.broj_naloga||'—')}</span></div>
+    <div><b>Kontakt</b><span>${esc(o.kontakt||'—')}</span></div><div><b>Tel/email</b><span>${esc(o.telefon_email||'—')}</span></div>
+    <div><b>Status</b><span>${esc((ORDER_STATUS[o.status_naloga]||{}).label||'')}</span></div><div><b>Vozila</b><span>${vehCount(o)}</span></div>
+  </div>
+  <h2>Utovar</h2><div class="kv"><div><b>Mesto</b><span>${esc(o.mesto_utovara||'—')}</span></div><div><b>Adresa</b><span>${esc(o.adresa_utovara||'—')}</span></div><div><b>Datum</b><span>${dmy(o.datum_utovara)||'—'} ${esc(o.termin_utovara||'')}</span></div><div><b>Kontakt</b><span>${esc(o.kontakt_utovar||'—')}</span></div></div>
+  <h2>Istovar</h2><div class="kv"><div><b>Mesto</b><span>${esc(o.mesto_istovara||'—')}</span></div><div><b>Adresa</b><span>${esc(o.adresa_istovara||'—')}</span></div><div><b>Datum</b><span>${dmy(o.datum_istovara)||'—'} ${esc(o.termin_istovara||'')}</span></div><div><b>Kontakt</b><span>${esc(o.kontakt_istovar||'—')}</span></div></div>
+  <h2>Vozila i dokumentacija</h2>
+  <table><thead><tr><th>#</th><th>Marka / model</th><th>VIN / tablica</th><th>Opis</th><th class="td-c">NU</th><th class="td-c">FA</th><th class="td-c">SAOB</th><th class="td-c">EX</th></tr></thead><tbody>`;
+  (o.vozila||[]).forEach((v,i)=>{body+=`<tr><td>${i+1}</td><td>${esc(v.marka_model||'')}</td><td>${esc(v.vin||'')}</td><td>${esc(v.opis||'')}</td>
+    <td class="td-c">${v.nu?'✓':'—'}</td><td class="td-c">${v.fa?'✓':'—'}</td><td class="td-c">${v.saob?'✓':'—'}</td><td class="td-c">${v.ex?'✓':'—'}</td></tr>`});
+  body+=`</tbody></table>`;
+  if(fin)body+=`<h2>Plaćanje (za ceo nalog)</h2><table><tr><th>Vrsta</th><th class="r">Iznos</th><th>Status</th></tr>
+    <tr><td>Gotovina</td><td class="r">${money(o.iznos_gotovina)}</td><td>${o.gotovina_naplacena?'Naplaćeno':'Nije'}</td></tr>
+    <tr><td>Faktura</td><td class="r">${money(o.iznos_faktura)}</td><td>${o.faktura_placena?'Plaćeno':'Nije'}</td></tr>
+    <tr class="tot"><td>Ukupno</td><td class="r">${money(orderTotal(o))}</td><td>${(orderPayStatus(o)).label}</td></tr></table>`;
+  if(o.napomena)body+=`<h2>Napomena</h2><div>${esc(o.napomena)}</div>`;
+  if(o.interna_napomena&&CAPS.edit)body+=`<div style="margin-top:6px;font-size:10px;color:#777"><b>Interno:</b> ${esc(o.interna_napomena)}</div>`;
+  showPdfPreview('Nalog '+(o.klijent||''),body);
+}
+/* ═══════════════════ IZVEŠTAJI (Chart.js) ═══════════════════ */
+let CHARTS=[];
+function openReports(){renderReportsAvailable();$('reportsModal').classList.add('open');buildReports()}
+function closeReports(){destroyCharts();$('reportsModal').classList.remove('open')}
+function renderReportsAvailable(){if(!CAPS.finance)document.body.classList.add('no-finance')}
+function destroyCharts(){CHARTS.forEach(c=>{try{c.destroy()}catch(e){}});CHARTS=[]}
+function repData(){
+  const p=$('rep-period').value;
+  const tours=TOURS.filter(t=>tourInPeriod(t,p));
+  const ords=ORDERS.filter(o=>orderInPeriod(o,p));
+  return{p,tours,ords};
+}
+function groupSum(arr,keyFn,valFn){const m={};arr.forEach(x=>{const k=keyFn(x)||'—';m[k]=(m[k]||0)+(valFn?valFn(x):1)});return m}
+function buildReports(){
+  destroyCharts();
+  const fin=CAPS.finance;const{tours,ords}=repData();
+  let cashT=0,cashP=0,invT=0,invP=0,veh=0,prob=0,docm=0,delNoPay=0,late=0;
+  ords.forEach(o=>{const g=num(o.iznos_gotovina),f=num(o.iznos_faktura);cashT+=g;invT+=f;
+    if(o.gotovina_naplacena)cashP+=g;if(o.faktura_placena)invP+=f;veh+=vehCount(o);
+    if(orderHasProblem(o))prob++;if(docStatus(o).key!=='full')docm++;
+    if(o.status_naloga==='isporuceno'&&orderPayStatus(o).key!=='full')delNoPay++;if(orderLate(o))late++});
+  const grand=cashT+invT,paid=cashP+invP;
+  const kpis=[['Tura',tours.length],['Naloga',ords.length],['Vozila',veh],
+    ['Problematični',prob],['Nepotpuna dok.',docm],['Kasne',late]];
+  if(fin)kpis.push(['Vrednost',money0(grand)],['Naplata',(grand>0?Math.round(paid/grand*100):0)+'%'],
+    ['Nenaplaćeno',money0(grand-paid)],['Isporuč. nenapl.',delNoPay]);
+  let h=`<div class="rep-grid">`+kpis.map(([l,v])=>`<div class="rep-kpi"><div class="l">${l}</div><div class="v">${v}</div></div>`).join('')+`</div>`;
+  h+=`<div class="rep-panels">
+    <div class="rep-panel"><h4>Nalozi po statusu</h4><canvas id="c-status"></canvas></div>
+    <div class="rep-panel"><h4>Nalozi po klijentu (top 8)</h4><canvas id="c-client"></canvas></div>
+    <div class="rep-panel"><h4>Utovari po danima</h4><canvas id="c-days"></canvas></div>
+    <div class="rep-panel"><h4>Ture po statusu</h4><canvas id="c-tstatus"></canvas></div>`;
+  if(fin)h+=`<div class="rep-panel"><h4>Naplata po klijentu (top 8)</h4><canvas id="c-paycli"></canvas></div>
+    <div class="rep-panel"><h4>Odnos gotovina / faktura</h4><canvas id="c-cashinv"></canvas></div>
+    <div class="rep-panel full"><h4>Naplata po vozaču</h4><canvas id="c-paydrv"></canvas></div>`;
+  h+=`</div>`;
+  // dokumentacija + problematični tabele
+  h+=`<div class="rep-panel full" style="margin-top:14px"><h4>Dokumentacija koja nedostaje</h4>${docMissTable(ords)}</div>`;
+  if(fin)h+=`<div class="rep-panel full" style="margin-top:14px"><h4>Isporučeno a nenaplaćeno</h4>${delNoPayTable(ords)}</div>`;
+  $('reportsBody').innerHTML=h;
+  // grafikoni
+  const C=window.Chart;if(!C)return;
+  const COL=['#0f766e','#2563eb','#7c3aed','#1e3a8a','#ea580c','#16a34a','#dc2626','#ca8a04','#0891b2','#64748b'];
+  const stCount=groupSum(ords,o=>(ORDER_STATUS[o.status_naloga]||{}).label||o.status_naloga);
+  CHARTS.push(new C($('c-status'),{type:'doughnut',data:{labels:Object.keys(stCount),datasets:[{data:Object.values(stCount),backgroundColor:COL}]},options:chOpt(true)}));
+  const cli=topN(groupSum(ords,o=>o.klijent,()=>1),8);
+  CHARTS.push(new C($('c-client'),{type:'bar',data:{labels:Object.keys(cli),datasets:[{label:'Naloga',data:Object.values(cli),backgroundColor:'#0f766e'}]},options:chOpt()}));
+  const byDay=groupSum(ords.filter(o=>o.datum_utovara),o=>dmy(o.datum_utovara),()=>1);
+  const dk=Object.keys(byDay).sort((a,b)=>cmp(a.split('.').reverse().join(''),b.split('.').reverse().join('')));
+  CHARTS.push(new C($('c-days'),{type:'line',data:{labels:dk,datasets:[{label:'Utovari',data:dk.map(k=>byDay[k]),borderColor:'#2563eb',backgroundColor:'rgba(37,99,235,.15)',fill:true,tension:.3}]},options:chOpt()}));
+  const tst=groupSum(tours,t=>(TOUR_STATUS[tourEffStatus(t)]||{}).label||'');
+  CHARTS.push(new C($('c-tstatus'),{type:'bar',data:{labels:Object.keys(tst),datasets:[{label:'Tura',data:Object.values(tst),backgroundColor:'#7c3aed'}]},options:chOpt()}));
+  if(fin){
+    const payCli=topN(groupSum(ords,o=>o.klijent,o=>orderTotal(o)),8);
+    CHARTS.push(new C($('c-paycli'),{type:'bar',data:{labels:Object.keys(payCli),datasets:[{label:'€',data:Object.values(payCli),backgroundColor:'#16a34a'}]},options:chOpt(false,true)}));
+    CHARTS.push(new C($('c-cashinv'),{type:'doughnut',data:{labels:['Gotovina','Faktura'],datasets:[{data:[cashT,invT],backgroundColor:['#16a34a','#2563eb']}]},options:chOpt(true,true)}));
+    const drv=topN(groupSum(ords,o=>{const t=TOURS.find(x=>x.tour_id===o.tour_id);return t?t.vozac:'—'},o=>orderTotal(o)),12);
+    CHARTS.push(new C($('c-paydrv'),{type:'bar',data:{labels:Object.keys(drv),datasets:[{label:'€',data:Object.values(drv),backgroundColor:'#0f766e'}]},options:chOpt(false,true)}));
+  }
+}
+function chOpt(legend,money){return{responsive:true,maintainAspectRatio:false,
+  plugins:{legend:{display:!!legend,position:'bottom',labels:{font:{size:10}}},
+    tooltip:{callbacks:money?{label:c=>c.label+': '+money0(c.parsed.y!=null?c.parsed.y:c.parsed)}:{}}},
+  scales:legend?{}:{y:{beginAtZero:true,ticks:{font:{size:10}}},x:{ticks:{font:{size:9}}}}}}
+function topN(obj,n){const e=Object.entries(obj).sort((a,b)=>b[1]-a[1]).slice(0,n);const o={};e.forEach(([k,v])=>o[k]=v);return o}
+function docMissTable(ords){
+  const miss=ords.filter(o=>docStatus(o).key!=='full');
+  if(!miss.length)return '<div class="empty">Sva dokumentacija je kompletna. ✓</div>';
+  let h='<table class="tbl" style="font-size:11px"><thead><tr><th>Klijent</th><th>Tura</th><th>Nedostaje</th></tr></thead><tbody>';
+  miss.forEach(o=>{const t=TOURS.find(x=>x.tour_id===o.tour_id)||{};
+    const need=[['nalog_za_utovar','NU'],['faktura','FA'],['saobracajna','SAOB'],['ex','EX']].filter(([k])=>!o[k]).map(([,l])=>l).join(', ');
+    h+=`<tr><td>${esc(o.klijent||'')}</td><td>${esc(t.broj_ture||'')}</td><td>${need}</td></tr>`});
+  return h+'</tbody></table>';
+}
+function delNoPayTable(ords){
+  const list=ords.filter(o=>o.status_naloga==='isporuceno'&&orderPayStatus(o).key!=='full');
+  if(!list.length)return '<div class="empty">Nema isporučenih a nenaplaćenih naloga. ✓</div>';
+  let h='<table class="tbl" style="font-size:11px"><thead><tr><th>Klijent</th><th>Tura</th><th class="r" style="text-align:right">Duguje</th></tr></thead><tbody>';
+  list.forEach(o=>{const t=TOURS.find(x=>x.tour_id===o.tour_id)||{};
+    const due=(o.gotovina_naplacena?0:num(o.iznos_gotovina))+(o.faktura_placena?0:num(o.iznos_faktura));
+    h+=`<tr><td>${esc(o.klijent||'')}</td><td>${esc(t.broj_ture||'')}</td><td style="text-align:right">${money(due)}</td></tr>`});
+  return h+'</tbody></table>';
+}
+function exportReportPDF(){
+  if(!requireCap('export')){toast('Nemate ovlašćenje za izvoz.','err');return}
+  const fin=CAPS.finance;const{p,tours,ords}=repData();
+  let cashT=0,cashP=0,invT=0,invP=0,veh=0,prob=0,docm=0;
+  ords.forEach(o=>{const g=num(o.iznos_gotovina),f=num(o.iznos_faktura);cashT+=g;invT+=f;
+    if(o.gotovina_naplacena)cashP+=g;if(o.faktura_placena)invP+=f;veh+=vehCount(o);
+    if(orderHasProblem(o))prob++;if(docStatus(o).key!=='full')docm++});
+  const grand=cashT+invT,paid=cashP+invP;
+  const pl={today:'Danas',cur:'Tekuća sedmica',prev:'Prošla sedmica',next:'Naredna sedmica',month:'Tekući mesec',pmonth:'Prošli mesec',all:'Sve u bazi'}[p];
+  let body=`<h1>Izveštaj — ${pl}</h1><div class="kv">
+    <div><b>Tura</b><span>${tours.length}</span></div><div><b>Naloga</b><span>${ords.length}</span></div>
+    <div><b>Vozila</b><span>${veh}</span></div><div><b>Problematični</b><span>${prob}</span></div>
+    <div><b>Nepotpuna dok.</b><span>${docm}</span></div>`;
+  if(fin)body+=`<div><b>Vrednost</b><span>${money(grand)}</span></div><div><b>Naplaćeno</b><span>${money(paid)}</span></div>
+    <div><b>Naplata</b><span>${grand>0?Math.round(paid/grand*100):0}%</span></div>`;
+  body+=`</div>`;
+  const st=groupSum(ords,o=>(ORDER_STATUS[o.status_naloga]||{}).label||'');
+  body+=`<h2>Nalozi po statusu</h2><table><tr><th>Status</th><th class="r">Broj</th></tr>${Object.entries(st).map(([k,v])=>`<tr><td>${k}</td><td class="r">${v}</td></tr>`).join('')}</table>`;
+  body+=`<h2>Dokumentacija koja nedostaje</h2>${docMissTable(ords)}`;
+  if(fin)body+=`<h2>Isporučeno a nenaplaćeno</h2>${delNoPayTable(ords)}`;
+  showPdfPreview('Izveštaj '+pl,body);
+}
+/* ═══════════════════ LOGOVI ═══════════════════ */
+function openLogs(){renderLogs();$('logsModal').classList.add('open')}
+function closeLogs(){$('logsModal').classList.remove('open')}
+function renderLogs(){
+  const q=($('logSearch').value||'').toLowerCase();
+  const rows=LOGS.filter(l=>!q||[l.user,l.action,l.desc,l.tour_id,l.order_id].join(' ').toLowerCase().includes(q)).slice(0,400);
+  $('logsList').innerHTML=rows.length?rows.map(l=>`<div class="log-row">
+    <span class="lt">${esc(l.time||'')}</span>
+    <span class="la ${esc(l.action||'')}">${esc(l.action||'')}</span>
+    <span class="ld"><b>${esc(l.user||'')}</b> — ${esc(l.desc||'')}</span></div>`).join(''):'<div class="empty">Nema zapisa u logu.</div>';
+}
+/* ═══════════════════ EXPORT / IMPORT (SheetJS) ═══════════════════ */
+const TOUR_COLS=['tour_id','broj_ture','reg','vozac','status_ture','datum_polaska','datum_zavrsetka','gps','prioritet','interna_oznaka','napomena','operater_kreirao','kreirano','operater_izmenio','izmenjeno'];
+const ORDER_COLS=['order_id','tour_id','redni_broj','broj_naloga','klijent','kontakt','telefon_email','mesto_utovara','adresa_utovara','kontakt_utovar','datum_utovara','termin_utovara','mesto_istovara','adresa_istovara','kontakt_istovar','datum_istovara','termin_istovara','broj_vozila','vozila_json','vozila_opis','status_naloga','iznos_gotovina','gotovina_naplacena','iznos_faktura','faktura_placena','problem','cekanje','blokada','steta','otkazano','prioritet','napomena','interna_napomena','kreirano','izmenjeno'];
+const KAMION_COLS=['kamion_id','reg','marka','status','napomena'];
+const VOZAC_COLS=['vozac_id','ime','telefon','status','napomena'];
+function rowsFrom(arr,cols){return arr.map(x=>{const r={};cols.forEach(c=>r[c]=x[c]==null?'':x[c]);return r})}
+function orderExportRow(o){const r={};ORDER_COLS.forEach(c=>r[c]=o[c]==null?'':o[c]);
+  r.broj_vozila=vehCount(o);
+  r.vozila_json=JSON.stringify((o.vozila||[]).map(v=>({marka_model:v.marka_model||'',vin:v.vin||'',opis:v.opis||'',nu:v.nu?1:0,fa:v.fa?1:0,saob:v.saob?1:0,ex:v.ex?1:0})));
+  r.vozila_opis=(o.vozila||[]).map(v=>[v.marka_model,v.vin].filter(Boolean).join(' ')).join(' | ');
+  return r}
+function visibleOrders(){return VIEW==='orders'?ORDERS.filter(orderMatch):ORDERS}
+function exportXLSX(){
+  if(!requireCap('export')){toast('Nemate ovlašćenje za izvoz.','err');return}
+  const wb=XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb,XLSX.utils.json_to_sheet(rowsFrom(TOURS,TOUR_COLS)),'Ture');
+  XLSX.utils.book_append_sheet(wb,XLSX.utils.json_to_sheet(ORDERS.map(orderExportRow)),'Nalozi');
+  if(KAMIONI.length)XLSX.utils.book_append_sheet(wb,XLSX.utils.json_to_sheet(rowsFrom(KAMIONI,KAMION_COLS)),'Kamioni');
+  if(VOZACI.length)XLSX.utils.book_append_sheet(wb,XLSX.utils.json_to_sheet(rowsFrom(VOZACI,VOZAC_COLS)),'Vozaci');
+  XLSX.writeFile(wb,'balkan_avto_planer_'+todayYmd()+'.xlsx');
+  addLog('export','','','Excel izvoz ('+TOURS.length+' tura, '+ORDERS.length+' naloga)');
+  toast('Excel izvezen.','ok');
+}
+function exportCSV(){
+  if(!requireCap('export')){toast('Nemate ovlašćenje za izvoz.','err');return}
+  const ws=XLSX.utils.json_to_sheet(ORDERS.map(orderExportRow));
+  const csv=XLSX.utils.sheet_to_csv(ws,{FS:';'});
+  const blob=new Blob(['\ufeff'+csv],{type:'text/csv;charset=utf-8'});
+  const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='nalozi_'+todayYmd()+'.csv';a.click();
+  addLog('export','','','CSV izvoz naloga');toast('CSV izvezen.','ok');
+}
+function openImport(){if(!requireCap('edit'))return;$('importStatus').textContent='';$('importFile').value='';$('importModal').classList.add('open')}
+function closeImport(){$('importModal').classList.remove('open')}
+function bool01(v){return (v===1||v==='1'||v===true||/^(da|true|x|✓|yes)$/i.test(String(v)))?1:0}
+async function runImport(){
+  if(!requireCap('edit'))return;
+  const f=$('importFile').files[0];if(!f){toast('Izaberi fajl.','err');return}
+  $('importStatus').textContent='Učitavam…';
+  try{
+    const buf=await f.arrayBuffer();const wb=XLSX.read(buf,{type:'array'});
+    let tIn=[],oIn=[],kIn=[],vIn=[];
+    const tSheet=wb.SheetNames.find(n=>/tur/i.test(n)),oSheet=wb.SheetNames.find(n=>/nalog/i.test(n));
+    const kSheet=wb.SheetNames.find(n=>/kamion|vozila/i.test(n)),vSheet=wb.SheetNames.find(n=>/voza[cč]/i.test(n));
+    if(tSheet)tIn=XLSX.utils.sheet_to_json(wb.Sheets[tSheet],{defval:''});
+    if(oSheet)oIn=XLSX.utils.sheet_to_json(wb.Sheets[oSheet],{defval:''});
+    if(kSheet&&kSheet!==oSheet)kIn=XLSX.utils.sheet_to_json(wb.Sheets[kSheet],{defval:''});
+    if(vSheet&&vSheet!==oSheet)vIn=XLSX.utils.sheet_to_json(wb.Sheets[vSheet],{defval:''});
+    if(!tSheet&&!oSheet&&!kSheet&&!vSheet){oIn=XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]],{defval:''})}
+    let nt=0,no=0,nk=0,nv=0;
+    for(const r of tIn){if(!r.tour_id&&!r.broj_ture)continue;
+      const id=r.tour_id||uid('T');const rec=Object.assign({tour_id:id},r);
+      const ex=TOURS.find(t=>t.tour_id===id||(r.broj_ture&&t.broj_ture===r.broj_ture));
+      if(ex){Object.assign(ex,rec,{tour_id:ex.tour_id});await pushTour(ex)}else{await pushTour(rec)}nt++}
+    for(const r of oIn){if(!r.klijent&&!r.order_id)continue;
+      const id=r.order_id||uid('O');const rec=Object.assign({order_id:id},r);
+      ['gotovina_naplacena','faktura_placena','problem','cekanje','blokada','steta','otkazano'].forEach(k=>rec[k]=bool01(rec[k]));
+      // vozila: vozila_json → niz; fallback legacy marka_model/vinovi + per-order doc kolone
+      if(rec.vozila_json){rec.vozila=normVozila(rec.vozila_json)}
+      else if(rec.marka_model||rec.vinovi){
+        const vins=String(rec.vinovi||'').split(/[\n,;]+/).map(s=>s.trim()).filter(Boolean);
+        const cnt=Math.max(1,parseInt(rec.broj_vozila)||vins.length||1);
+        rec.vozila=[];for(let i=0;i<cnt;i++)rec.vozila.push(vehNew({marka_model:rec.marka_model||'',vin:vins[i]||'',
+          nu:bool01(rec.nalog_za_utovar),fa:bool01(rec.faktura),saob:bool01(rec.saobracajna),ex:bool01(rec.ex)}));
+      }else{rec.vozila=normVozila(rec.vozila)}
+      if(!rec.vozila.length)rec.vozila=[vehNew()];
+      rec.broj_vozila=rec.vozila.length;
+      delete rec.vozila_json;delete rec.vozila_opis;delete rec.marka_model;delete rec.vinovi;delete rec.opis_vozila;
+      delete rec.nalog_za_utovar;delete rec.faktura;delete rec.saobracajna;delete rec.ex;
+      if(!rec.tour_id){const orphan=TOURS.find(t=>t.broj_ture===r.broj_ture);rec.tour_id=orphan?orphan.tour_id:uid('T_orphan')}
+      const ex=ORDERS.find(o=>o.order_id===id);
+      if(ex){Object.assign(ex,rec,{order_id:ex.order_id});await pushOrder(ex)}else{await pushOrder(rec)}no++}
+    for(const r of kIn){const reg=(r.reg||r.VOZILA||r.Reg||'').toString().trim();if(!reg)continue;
+      if(KAMIONI.some(k=>(k.reg||'').toLowerCase()===reg.toLowerCase()))continue;
+      KAMIONI.push({kamion_id:r.kamion_id||uid('K'),reg,marka:r.marka||'',status:r.status||'aktivan',napomena:r.napomena||'',ts:Date.now()});nk++}
+    for(const r of vIn){const ime=(r.ime||r['VOZAČI']||r.VOZACI||r.Ime||'').toString().trim();if(!ime)continue;
+      if(VOZACI.some(v=>(v.ime||'').toLowerCase()===ime.toLowerCase()))continue;
+      VOZACI.push({vozac_id:r.vozac_id||uid('V'),ime,telefon:r.telefon||'',status:r.status||'aktivan',napomena:r.napomena||'',ts:Date.now()});nv++}
+    if(nk)await kvPut('kamioni',KAMIONI);if(nv)await kvPut('vozaci',VOZACI);
+    await addLog('import','','','Import: '+nt+' tura, '+no+' naloga, +'+nk+' kamiona, +'+nv+' vozača');
+    refreshDicts();renderAll();recalc();
+    $('importStatus').textContent='✓ Uvezeno: '+nt+' tura, '+no+' naloga, +'+nk+' kamiona, +'+nv+' vozača.';
+    toast('Import završen.','ok');
+  }catch(e){$('importStatus').textContent='⚠ Greška: '+e.message;toast('Greška pri importu.','err')}
+}
+/* read-only snapshot stanja (dijagnostika / podrška) */
+window.__state=function(){return{TOURS:TOURS,ORDERS:ORDERS,KAMIONI:KAMIONI,VOZACI:VOZACI,META:META,DICTS:DICTS,CAPS:CAPS}};
+/* ═══════════════════ INICIJALIZACIJA ═══════════════════ */
+(async function init(){
+  getUsers();
+  // datalist i status select su statični; popuni statuse forme
+  fillStatusSelects();
+  // restore sesije
+  const logged=restoreSession();
+  // baza
+  try{await openDB();await loadCache()}catch(e){console.warn('DB',e)}
+  applyMetaToUI();
+  refreshDicts();
+  // jedan prazan nalog u formi
+  if(!formOrders.length)addOrderCard();
+  renderAll();recalc();renderNera();renderServis();
+  // sat
+  tick();setInterval(tick,1000*30);
+  // online
+  if(apiConfigured()){updateDbPill();try{await apiGet('ping');setApiStatus(true);await pullAll(false);refreshDicts();renderAll();recalc()}catch(e){setApiStatus(false)}}
+  else updateDbPill();
+  startAutoSync();
+  // horizontalni scroll sync
+  const ts=$('topScroll'),w=$('tblWrap');
+  if(ts&&w){ts.addEventListener('scroll',()=>{w.scrollLeft=ts.scrollLeft});w.addEventListener('scroll',()=>{ts.scrollLeft=w.scrollLeft})}
+  if(logged)applyRole();
+})();
+</script>
+</body>
+</html>
